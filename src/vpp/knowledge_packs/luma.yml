@@ -1,0 +1,22 @@
+provider: luma
+name: Luma Dream Machine / Ray
+evidence_tier: A
+rules:
+  - id: luma.camera_stack
+    title: Keep camera direction focused and visible
+    trigger: camera_motion_overload
+    severity: warning
+    points: 8
+    recommendation: Use one clear camera move or an intentionally ordered sequence; describe visible subject behavior rather than vague emotion.
+    sources:
+      - name: Luma — How to Generate with Ray2
+        url: https://lumalabs.ai/learning-hub/dream-machine-how-to-generate-with-ray2
+  - id: luma.image_video_motion
+    title: Use references/keyframes for visual control and prompt the motion
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Let references/keyframes anchor appearance, then describe action, camera and timing in direct natural language.
+    sources:
+      - name: Luma — Dream Machine Best Practices
+        url: https://lumalabs.ai/learning-hub/best-practices
