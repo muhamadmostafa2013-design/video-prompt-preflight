@@ -27,9 +27,9 @@ timeline:
   - seconds: 2
     action: "show ver- large and clean"
   - seconds: 2
-    action: "transform laufen into sich verlaufen; highlight only ver-"
+    action: "show laufen as static text, hold clearly, hard cut, then show sich verlaufen as static text"
   - seconds: 2
-    action: "transform hören into sich verhören; highlight only ver-"
+    action: "show hören as static text, hold clearly, hard cut, then show sich verhören as static text"
   - seconds: 1
     action: "hold ver- centered"
 rules:
