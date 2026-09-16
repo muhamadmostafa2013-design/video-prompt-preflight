@@ -1,0 +1,17 @@
+{
+  "id": "failure-0003",
+  "provider": "veo",
+  "category": "exact_text_morph",
+  "title": "Exact educational text corrupts during animated morphs",
+  "observed": "A 10-second educational Veo generation produced transient corrupted strings during a requested word morph, and did not hold every requested source/target state cleanly.",
+  "expected": "Each exact string appears as a separate stable state with clean cuts; spelling-critical text is moved to post-production when generator rendering is unreliable.",
+  "prevention_rules": [
+    "screen_text.morph_risk",
+    "screen_text.state_coverage",
+    "static_text_states",
+    "post_production_overlay_fallback"
+  ],
+  "regression_source": "real VPP output-QA case",
+  "severity": "warning",
+  "points": 18
+}
