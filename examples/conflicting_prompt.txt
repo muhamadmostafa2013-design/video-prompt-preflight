@@ -1,0 +1,12 @@
+Create a 10 second vertical video, but make the scene 12 seconds long.
+No background music. Add subtle background music.
+No Arabic text on screen.
+No automatic subtitles, but generate subtitles for every spoken sentence.
+The presenter speaks Egyptian Arabic only and must not pronounce German.
+The presenter should pronounce laufen and sich verlaufen clearly in German.
+ON SCREEN:
+ver-
+يتوه وهو ماشي
+laufen
+sich verlaufen
+Show, transform, animate, zoom, cut, switch, highlight, pause, transition and display every element quickly.

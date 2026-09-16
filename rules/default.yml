@@ -1,0 +1,8 @@
+# Planned central ruleset. v0.1 reads these settings from each scene spec;
+# v0.2 will merge project-level rules from this file automatically.
+no_arabic_on_screen: true
+no_auto_subtitles: true
+presenter_arabic_only: true
+max_screen_text_items: 6
+max_events_per_10s: 5
+max_spoken_words_per_second: 2.7

@@ -1,0 +1,23 @@
+name: Generator failure pattern
+about: Report a preventable AI-video prompt failure
+body:
+  - type: textarea
+    id: scene
+    attributes:
+      label: Minimal Scene Spec
+      description: Remove private data and paste the smallest reproducible spec.
+    validations:
+      required: true
+  - type: textarea
+    id: failure
+    attributes:
+      label: What went wrong?
+      description: Describe the generated failure and provider/model if known.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

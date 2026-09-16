@@ -1,0 +1,21 @@
+Create a 10-second vertical cinematic educational video. Vertical 9:16.
+Same Egyptian male presenter in a dark modern studio with warm cinematic lighting.
+Presenter speaks Egyptian Arabic only and must not pronounce German.
+No Arabic text on screen. No automatic subtitles. No background music.
+
+SPOKEN EGYPTIAN ARABIC:
+"عايز تبدأ تفهم الألماني بدل ما تحفظه؟ ركّز في البادئة اللي قدامك… ساعات بتغيّر معنى الفعل بشكل كبير."
+
+ON SCREEN:
+ver-
+laufen
+sich verlaufen
+hören
+sich verhören
+
+TIMELINE:
+0-3s presenter delivers hook
+3-5s show ver- large and clean
+5-7s transform laufen into sich verlaufen
+7-9s transform hören into sich verhören
+9-10s hold ver- centered

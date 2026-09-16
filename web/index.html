@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Video Prompt Preflight</title>
+  <meta name="description" content="Open-source local-first preflight, simulation and optimization for AI video prompts." />
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin:0; background:#0b0d10; color:#eef2f7; }
+    main { max-width:1220px; margin:0 auto; padding:32px 20px 56px; }
+    h1 { margin:8px 0 8px; font-size:clamp(30px,5vw,52px); letter-spacing:-.03em; }
+    h2 { margin:0 0 12px; }
+    p { color:#aab4c3; line-height:1.6; }
+    .badge { display:inline-block; border:1px solid #2b3442; padding:6px 10px; border-radius:999px; color:#c9d3df; font-size:13px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:24px; }
+    .card { background:#11151b; border:1px solid #222a35; border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+    textarea, pre { width:100%; min-height:430px; background:#0a0d12; color:#eaf0f8; border:1px solid #26303d; border-radius:12px; padding:14px; font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow:auto; }
+    textarea { resize:vertical; }
+    pre.small { min-height:240px; max-height:420px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+    button { border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    button.primary { background:#eef2f7; color:#0a0d12; }
+    button.secondary { background:#1c2430; color:#e9eef6; border:1px solid #2a3544; }
+    .result { margin-top:18px; }
+    .summary { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .pill { padding:6px 10px; border-radius:999px; border:1px solid #2c3542; }
+    .pass { color:#76e6a3; } .fail { color:#ff7b83; } .warn { color:#ffd479; }
+    .finding { border-top:1px solid #222a35; padding:12px 0; line-height:1.45; }
+    .finding:first-child { border-top:0; }
+    .metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-top:14px; }
+    .metric { background:#0c1015; border:1px solid #222a35; border-radius:12px; padding:12px; }
+    .metric small { color:#8090a3; display:block; margin-bottom:4px; }
+    .metric strong { font-size:18px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+    footer { margin-top:30px; color:#7f8b9b; font-size:13px; }
+    code { background:#171d25; padding:2px 6px; border-radius:6px; }
+    @media(max-width:900px){ .grid,.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr} textarea,pre{min-height:340px} }
+  </style>
+</head>
+<body>
+<main>
+  <span class="badge">v0.2 · open source · local-first · zero API calls</span>
+  <h1>Video Prompt Preflight</h1>
+  <p>Paste a normal AI-video prompt. VPP deterministically extracts a Scene Spec, catches contradictions and timing pressure, simulates a short scene, and compiles a smaller constrained prompt before you spend a generation credit.</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Free-form prompt</h2>
+      <textarea id="promptInput" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="primary" id="analyzeBtn">Analyze Prompt</button>
+        <button class="secondary" id="optimizeBtn">Optimize</button>
+        <button class="secondary" id="sampleBtn">Load ver- sample</button>
+        <button class="secondary" id="badBtn">Load conflict sample</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Optimized prompt</h2>
+      <pre id="compiledOutput">Analyze or optimize a prompt.</pre>
+      <div class="actions"><button class="secondary" id="copyBtn">Copy Prompt</button></div>
+    </section>
+  </div>
+
+  <section class="card result">
+    <div class="summary">
+      <h2 id="status">Not analyzed</h2>
+      <strong class="pill" id="risk">Risk: —</strong>
+      <strong class="pill" id="simulation">Simulation: —</strong>
+    </div>
+    <div class="metrics">
+      <div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div>
+      <div class="metric"><small>Speech load</small><strong id="mSpeech">—</strong></div>
+      <div class="metric"><small>Events</small><strong id="mEvents">—</strong></div>
+      <div class="metric"><small>Screen text</small><strong id="mText">—</strong></div>
+      <div class="metric"><small>Timeline</small><strong id="mTimeline">—</strong></div>
+    </div>
+    <div id="findings"></div>
+  </section>
+
+  <div class="two">
+    <section class="card">
+      <h2>Extracted Scene Spec</h2>
+      <pre class="small" id="sceneOutput"></pre>
+    </section>
+    <section class="card">
+      <h2>What v0.2 checks</h2>
+      <p><code>duration conflicts</code> · <code>music conflicts</code> · <code>subtitle conflicts</code> · <code>German-by-presenter conflicts</code> · <code>speech density</code> · <code>timeline overflow</code> · <code>action density</code> · <code>screen-text whitelist</code> · <code>Arabic on-screen policy</code>.</p>
+      <p>VPP intentionally does not invent missing creative content. When extraction is uncertain, it keeps the result conservative and asks the prompt to become more explicit.</p>
+    </section>
+  </div>
+
+  <footer>VPP reduces preventable prompt failures; it cannot guarantee stochastic video generation will be artifact-free.</footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

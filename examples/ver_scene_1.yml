@@ -1,0 +1,47 @@
+name: ver- hook
+aspect_ratio: "9:16"
+duration_seconds: 10
+style:
+  - premium educational short
+  - dark modern studio
+  - warm cinematic lighting
+  - same Egyptian male presenter
+spoken:
+  arabic: "عايز تبدأ تفهم الألماني بدل ما تحفظه؟ ركّز في البادئة اللي قدامك… ساعات بتغيّر معنى الفعل بشكل كبير."
+  german_by_presenter: []
+screen_text:
+  - "ver-"
+  - "laufen"
+  - "sich verlaufen"
+  - "hören"
+  - "sich verhören"
+text_whitelist:
+  - "ver-"
+  - "laufen"
+  - "sich verlaufen"
+  - "hören"
+  - "sich verhören"
+timeline:
+  - seconds: 3
+    action: "medium close-up; presenter delivers hook"
+  - seconds: 2
+    action: "show ver- large and clean"
+  - seconds: 2
+    action: "transform laufen into sich verlaufen; highlight only ver-"
+  - seconds: 2
+    action: "transform hören into sich verhören; highlight only ver-"
+  - seconds: 1
+    action: "hold ver- centered"
+rules:
+  no_arabic_on_screen: true
+  no_auto_subtitles: true
+  presenter_arabic_only: true
+  same_presenter: true
+  max_screen_text_items: 5
+  max_events_per_10s: 5
+  max_spoken_words_per_second: 2.7
+forbidden:
+  - "er-"
+  - "be-"
+  - "ent-"
+  - "zer-"

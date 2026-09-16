@@ -1,0 +1,27 @@
+name: intentionally bad regression sample
+aspect_ratio: "9:16"
+duration_seconds: 10
+spoken:
+  arabic: "شرح سريع"
+  german_by_presenter: ["sich verlaufen"]
+screen_text:
+  - "ver-"
+  - "يتوه وهو ماشي"
+  - "laufen"
+  - "sich verlaufen"
+  - "extra generated caption"
+text_whitelist:
+  - "ver-"
+  - "laufen"
+  - "sich verlaufen"
+timeline:
+  - {seconds: 3, action: "hook"}
+  - {seconds: 3, action: "show prefix"}
+  - {seconds: 3, action: "show walking"}
+  - {seconds: 3, action: "show map"}
+rules:
+  no_arabic_on_screen: true
+  no_auto_subtitles: true
+  presenter_arabic_only: true
+  max_screen_text_items: 4
+  max_events_per_10s: 5

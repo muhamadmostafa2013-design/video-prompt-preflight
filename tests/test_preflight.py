@@ -1,0 +1,91 @@
+import yaml
+from pathlib import Path
+
+from vpp.analyzer import analyze_scene
+from vpp.compiler import compile_scene
+from vpp.fixer import auto_fix_scene
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def load(name):
+    return yaml.safe_load((ROOT / "examples" / name).read_text(encoding="utf-8"))
+
+
+def test_verified_ver_scene_passes():
+    report = analyze_scene(load("ver_scene_1.yml"))
+    assert report.passed
+    assert report.risk_score == 0
+
+
+def test_bad_scene_catches_known_failures():
+    report = analyze_scene(load("bad_scene.yml"))
+    ids = {f.rule_id for f in report.findings}
+    assert not report.passed
+    assert "screen_text.arabic" in ids
+    assert "screen_text.whitelist" in ids
+    assert "timeline.overflow" in ids
+    assert "audio.german_presenter" in ids
+
+
+def test_safe_auto_fix_removes_text_and_audio_risks():
+    fixed = auto_fix_scene(load("bad_scene.yml"))
+    assert "يتوه وهو ماشي" not in fixed["screen_text"]
+    assert fixed["spoken"]["german_by_presenter"] == []
+
+
+def test_compiler_emits_compact_constraints():
+    prompt = compile_scene(load("ver_scene_1.yml"))
+    assert "EXACT SCREEN TEXT ONLY" in prompt
+    assert "TEXT WHITELIST IS STRICT" in prompt
+    assert "no Arabic text on screen" in prompt
+
+from vpp.parser import parse_prompt
+from vpp.prompt_analyzer import analyze_prompt
+from vpp.simulator import simulate_scene
+from vpp.optimizer import optimize_prompt
+
+
+def test_freeform_parser_extracts_ver_scene():
+    text = (ROOT / "examples" / "ver_scene_1_prompt.txt").read_text(encoding="utf-8")
+    scene = parse_prompt(text)
+    assert scene["duration_seconds"] == 10
+    assert scene["aspect_ratio"] == "9:16"
+    assert scene["rules"]["no_arabic_on_screen"] is True
+    assert scene["rules"]["presenter_arabic_only"] is True
+    assert "ver-" in scene["screen_text"]
+    assert "sich verlaufen" in scene["screen_text"]
+    assert len(scene["timeline"]) == 5
+
+
+def test_raw_prompt_conflicts_are_detected():
+    text = (ROOT / "examples" / "conflicting_prompt.txt").read_text(encoding="utf-8")
+    _, report = analyze_prompt(text)
+    ids = {f.rule_id for f in report.findings}
+    assert "prompt.duration.conflict" in ids
+    assert "prompt.music.conflict" in ids
+    assert "prompt.subtitle.conflict" in ids
+    assert "prompt.audio.conflict" in ids
+
+
+def test_simulator_marks_verified_scene_comfortable():
+    sim = simulate_scene(load("ver_scene_1.yml"))
+    assert sim.status == "comfortable"
+    assert sim.timeline_seconds == 10
+
+
+def test_optimizer_compiles_freeform_prompt():
+    text = (ROOT / "examples" / "ver_scene_1_prompt.txt").read_text(encoding="utf-8")
+    result = optimize_prompt(text)
+    assert "EXACT SCREEN TEXT ONLY" in result["optimized_prompt"]
+    assert "no Arabic text on screen" in result["optimized_prompt"]
+    assert result["after"]["risk_score"] <= result["before"]["risk_score"]
+
+
+def test_optimizer_marks_ambiguous_conflicts_for_review():
+    text = (ROOT / "examples" / "conflicting_prompt.txt").read_text(encoding="utf-8")
+    result = optimize_prompt(text)
+    assert result["requires_review"] is True
+    assert result["decisions"]
+    assert "no background music" in result["optimized_prompt"]
+    assert "no automatic subtitles" in result["optimized_prompt"]
