@@ -1,3 +1,4 @@
+import copy
 import yaml
 from pathlib import Path
 
@@ -46,6 +47,7 @@ def test_compiler_emits_compact_constraints():
     prompt = compile_scene(load("ver_scene_1.yml"))
     assert "EXACT SCREEN TEXT ONLY" in prompt
     assert "TEXT WHITELIST IS STRICT" in prompt
+    assert "TEXT SAFETY" in prompt
     assert "no Arabic text on screen" in prompt
 
 
@@ -81,6 +83,7 @@ def test_optimizer_compiles_freeform_prompt():
     text = (ROOT / "examples" / "ver_scene_1_prompt.txt").read_text(encoding="utf-8")
     result = optimize_prompt(text)
     assert "EXACT SCREEN TEXT ONLY" in result["optimized_prompt"]
+    assert "TEXT SAFETY" in result["optimized_prompt"]
     assert "no Arabic text on screen" in result["optimized_prompt"]
     assert result["after"]["risk_score"] <= result["before"]["risk_score"]
 
@@ -132,3 +135,46 @@ def test_failure_memory_matches_real_regressions():
     ids = {m["rule_id"] for m in matches}
     assert "memory.failure-0001" in ids
     assert "memory.failure-0002" in ids
+    assert "memory.failure-0003" not in ids
+
+
+def test_exact_text_morph_is_flagged():
+    scene = copy.deepcopy(load("ver_scene_1.yml"))
+    scene["timeline"][2]["action"] = "transform laufen into sich verlaufen; highlight only ver-"
+    report = analyze_scene(scene)
+    ids = {f.rule_id for f in report.findings}
+    assert "screen_text.morph_risk" in ids
+    assert "screen_text.state_coverage" in ids
+
+
+def test_compiler_rewrites_exact_text_morph_to_static_cut():
+    scene = copy.deepcopy(load("ver_scene_1.yml"))
+    scene["timeline"][2]["action"] = "transform laufen into sich verlaufen; highlight only ver-"
+    prompt = compile_scene(scene)
+    assert "transform laufen into sich verlaufen" not in prompt.lower()
+    assert "show laufen as static text" in prompt.lower()
+    assert "hard cut" in prompt.lower()
+    assert "do not morph" in prompt.lower()
+
+
+def test_veo_knowledge_matches_exact_text_morph_regression():
+    text = """Create a 10 second 9:16 video.
+ON SCREEN:
+laufen
+sich verlaufen
+TIMELINE:
+0-5s show laufen
+5-10s transform laufen into sich verlaufen
+"""
+    scene = parse_prompt(text)
+    findings = evaluate_knowledge(text, scene, provider="veo")
+    ids = {f.rule_id for f in findings}
+    assert "veo.exact_text_morph" in ids
+
+
+def test_failure_memory_matches_exact_text_morph_case():
+    scene = copy.deepcopy(load("ver_scene_1.yml"))
+    scene["timeline"][2]["action"] = "morph laufen into sich verlaufen"
+    matches = match_failures(scene, provider="veo")
+    ids = {m["rule_id"] for m in matches}
+    assert "memory.failure-0003" in ids
