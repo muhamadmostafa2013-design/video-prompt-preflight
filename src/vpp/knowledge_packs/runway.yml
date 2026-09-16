@@ -1,5 +1,6 @@
 provider: runway
 name: Runway Gen-4 / Gen-4.5
+evidence_tier: A
 rules:
   - id: runway.positive_phrasing
     title: Prefer positive phrasing over negative prompting
@@ -20,11 +21,20 @@ rules:
       - name: Runway — Gen-4 Video Prompting Guide
         url: https://help.runwayml.com/hc/en-us/articles/39789879462419-Gen-4-Video-Prompting-Guide
   - id: runway.duration.motion
-    title: Multiple movements benefit from the longer short-form duration
+    title: Multiple sequential actions may benefit from longer duration
     trigger: short_duration_complex_motion
     severity: warning
     points: 10
-    recommendation: Reduce motion beats or use a longer supported duration when the provider allows it.
+    recommendation: Reduce motion beats or use a longer supported duration when the shot contains several sequential actions.
     sources:
-      - name: Runway — Creating with Gen-4 Video
-        url: https://help.runwayml.com/hc/en-us/articles/37327109429011-Creating-with-Gen-4-Video
+      - name: Runway — Creating with Gen-4.5
+        url: https://help.runwayml.com/hc/en-us/articles/46974685288467-Creating-with-Gen-4-5
+  - id: runway.i2v.motion_focus
+    title: Image-to-video prompts should focus primarily on motion
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Let the image define composition, subject, lighting and style; use the prompt for subject action, environmental motion, camera motion, timing and direction.
+    sources:
+      - name: Runway — Image to Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/48324313115155-Image-to-Video-Prompting-Guide
