@@ -1,0 +1,22 @@
+provider: midjourney
+name: Midjourney Video
+evidence_tier: A
+rules:
+  - id: midjourney.high_motion_risk
+    title: High Motion increases movement but can increase unrealistic or glitchy motion
+    trigger: high_motion_request
+    severity: warning
+    points: 10
+    recommendation: Use High Motion only when the shot benefits from larger motion; prefer Low Motion for subtle/stable animation.
+    sources:
+      - name: Midjourney — Video documentation
+        url: https://docs.midjourney.com/hc/en-us/articles/37460773864589-Video
+  - id: midjourney.image_animation
+    title: The starting frame anchors the animation
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Use the starting frame to establish composition and visual identity; keep the video prompt focused on the intended animation/motion.
+    sources:
+      - name: Midjourney — Video documentation
+        url: https://docs.midjourney.com/hc/en-us/articles/37460773864589-Video
