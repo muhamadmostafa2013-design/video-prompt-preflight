@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import re
+
 from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
 from .knowledge import evaluate_knowledge
 from .candidates import build_candidates
 from .failure_memory import match_failures
+
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
 
 
 def _dedupe(items: list[dict]) -> list[dict]:
@@ -39,6 +43,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
     evidence = [x.to_dict() for x in evaluate_knowledge(text, scene, provider)]
     memory = match_failures(scene, provider)
     redteam = []
+
     if sim.status == "tight":
         redteam.append({
             "rule_id": "redteam.timing_pressure",
@@ -49,6 +54,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
             "points": 8,
             "sources": [],
         })
+
     if len(scene.get("screen_text", []) or []) >= 5 and len(scene.get("timeline", []) or []) >= 5:
         redteam.append({
             "rule_id": "redteam.text_motion_competition",
@@ -60,6 +66,20 @@ def triple_review(text: str, provider: str = "generic") -> dict:
             "sources": [],
         })
 
+    if any(
+        _MORPH_RE.search(str(e.get("action", "")))
+        for e in scene.get("timeline", []) or [] if isinstance(e, dict)
+    ):
+        redteam.append({
+            "rule_id": "redteam.exact_text_transition",
+            "agent": "Adversarial Critic",
+            "severity": "warning",
+            "message": "Animated transitions between exact words can create transient nonsense text even when the start/end spellings are correct.",
+            "recommendation": "Use separate static states and hard cuts; for spelling-critical text, prefer post-production overlays.",
+            "points": 18,
+            "sources": [],
+        })
+
     all_findings = _dedupe(round1_findings + evidence + memory + redteam)
     errors = [x for x in all_findings if x.get("severity") == "error"]
     warnings = [x for x in all_findings if x.get("severity") == "warning"]
@@ -67,6 +87,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
     heuristic_score = max(0, 100 - sum(int(x.get("points", 0) or 0) for x in all_findings))
     confidence = "high" if gate_pass and len(warnings) <= 1 else "medium" if gate_pass else "low"
     winner = candidates[0]
+
     if winner.hard_constraint_coverage < 100:
         gate_pass = False
         confidence = "low"
@@ -82,7 +103,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
         heuristic_score = max(0, heuristic_score - 40)
 
     return {
-        "version": "0.3.0",
+        "version": "0.4.0",
         "provider": provider,
         "scene": scene,
         "rounds": [
