@@ -4,6 +4,14 @@ from pathlib import Path
 from vpp.analyzer import analyze_scene
 from vpp.compiler import compile_scene
 from vpp.fixer import auto_fix_scene
+from vpp.parser import parse_prompt
+from vpp.prompt_analyzer import analyze_prompt
+from vpp.simulator import simulate_scene
+from vpp.optimizer import optimize_prompt
+from vpp.knowledge import evaluate_knowledge
+from vpp.triple_review import triple_review
+from vpp.candidates import build_candidates
+from vpp.failure_memory import match_failures
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,11 +47,6 @@ def test_compiler_emits_compact_constraints():
     assert "EXACT SCREEN TEXT ONLY" in prompt
     assert "TEXT WHITELIST IS STRICT" in prompt
     assert "no Arabic text on screen" in prompt
-
-from vpp.parser import parse_prompt
-from vpp.prompt_analyzer import analyze_prompt
-from vpp.simulator import simulate_scene
-from vpp.optimizer import optimize_prompt
 
 
 def test_freeform_parser_extracts_ver_scene():
@@ -89,3 +92,43 @@ def test_optimizer_marks_ambiguous_conflicts_for_review():
     assert result["decisions"]
     assert "no background music" in result["optimized_prompt"]
     assert "no automatic subtitles" in result["optimized_prompt"]
+
+
+def test_triple_review_ver_scene_passes_for_veo():
+    text = (ROOT / "examples" / "ver_scene_1_prompt.txt").read_text(encoding="utf-8")
+    result = triple_review(text, provider="veo")
+    assert result["passed"] is True
+    assert len(result["rounds"]) == 3
+    assert result["final_prompt"]
+    assert result["rounds"][0]["candidates"]
+
+
+def test_runway_knowledge_flags_negative_overload():
+    text = "Create a 10 second video. No music. No subtitles. Never zoom. Avoid cuts. Do not move the camera. The subject walks slowly."
+    scene = parse_prompt(text)
+    findings = evaluate_knowledge(text, scene, provider="runway")
+    ids = {f.rule_id for f in findings}
+    assert "runway.positive_phrasing" in ids
+
+
+def test_candidates_are_ranked_and_preserve_content():
+    scene = load("ver_scene_1.yml")
+    candidates = build_candidates(scene, provider="veo")
+    assert len(candidates) == 3
+    assert candidates[0].score >= candidates[-1].score
+    assert any("sich verlaufen" in c.prompt for c in candidates)
+
+
+def test_triple_review_conflict_prompt_fails_gate():
+    text = (ROOT / "examples" / "conflicting_prompt.txt").read_text(encoding="utf-8")
+    result = triple_review(text, provider="veo")
+    assert result["passed"] is False
+    assert result["confidence_band"] == "low"
+
+
+def test_failure_memory_matches_real_regressions():
+    scene = load("ver_scene_1.yml")
+    matches = match_failures(scene, provider="veo")
+    ids = {m["rule_id"] for m in matches}
+    assert "memory.failure-0001" in ids
+    assert "memory.failure-0002" in ids

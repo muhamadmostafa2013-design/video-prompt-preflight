@@ -4,53 +4,62 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Video Prompt Preflight</title>
-  <meta name="description" content="Open-source local-first preflight, simulation and optimization for AI video prompts." />
+  <meta name="description" content="Open-source local-first preflight, knowledge-backed triple review and prompt compilation for AI video generation." />
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
     * { box-sizing: border-box; }
     body { margin:0; background:#0b0d10; color:#eef2f7; }
-    main { max-width:1220px; margin:0 auto; padding:32px 20px 56px; }
-    h1 { margin:8px 0 8px; font-size:clamp(30px,5vw,52px); letter-spacing:-.03em; }
-    h2 { margin:0 0 12px; }
+    main { max-width:1220px; margin:0 auto; padding:30px 18px 60px; }
+    h1 { margin:8px 0; font-size:clamp(31px,5vw,52px); letter-spacing:-.035em; }
+    h2 { margin:0 0 12px; } h3 { margin:12px 0 8px; }
     p { color:#aab4c3; line-height:1.6; }
-    .badge { display:inline-block; border:1px solid #2b3442; padding:6px 10px; border-radius:999px; color:#c9d3df; font-size:13px; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:24px; }
+    .badge,.pill { display:inline-block; border:1px solid #2b3442; padding:6px 10px; border-radius:999px; color:#c9d3df; font-size:13px; }
+    .grid,.two { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; }
     .card { background:#11151b; border:1px solid #222a35; border-radius:18px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.18); }
-    textarea, pre { width:100%; min-height:430px; background:#0a0d12; color:#eaf0f8; border:1px solid #26303d; border-radius:12px; padding:14px; font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow:auto; }
-    textarea { resize:vertical; }
-    pre.small { min-height:240px; max-height:420px; }
+    textarea, pre, select, input { background:#0a0d12; color:#eaf0f8; border:1px solid #26303d; border-radius:12px; }
+    textarea, pre { width:100%; min-height:390px; padding:14px; font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; white-space:pre-wrap; overflow:auto; }
+    textarea { resize:vertical; } pre.small { min-height:220px; max-height:430px; }
+    select,input { padding:10px 12px; min-height:42px; }
+    .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0; }
     .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
-    button { border:0; border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer; }
+    button { border:0; border-radius:10px; padding:10px 14px; font-weight:750; cursor:pointer; }
     button.primary { background:#eef2f7; color:#0a0d12; }
     button.secondary { background:#1c2430; color:#e9eef6; border:1px solid #2a3544; }
-    .result { margin-top:18px; }
-    .summary { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
-    .pill { padding:6px 10px; border-radius:999px; border:1px solid #2c3542; }
-    .pass { color:#76e6a3; } .fail { color:#ff7b83; } .warn { color:#ffd479; }
-    .finding { border-top:1px solid #222a35; padding:12px 0; line-height:1.45; }
-    .finding:first-child { border-top:0; }
+    button.accent { background:#1f4a37; color:#b7ffd2; border:1px solid #30694f; }
+    .result { margin-top:18px; }.summary { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .pass { color:#76e6a3; }.fail { color:#ff7b83; }.warn { color:#ffd479; }.info { color:#9bc8ff; }
+    .finding { border-top:1px solid #222a35; padding:12px 0; line-height:1.48; }.finding:first-child { border-top:0; }
+    .finding small { color:#9aa8b8; }.source { margin-top:5px; font-size:12px; }.source a { color:#85b7ff; }
     .metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-top:14px; }
     .metric { background:#0c1015; border:1px solid #222a35; border-radius:12px; padding:12px; }
-    .metric small { color:#8090a3; display:block; margin-bottom:4px; }
-    .metric strong { font-size:18px; }
-    .two { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+    .metric small { color:#8090a3; display:block; margin-bottom:4px; }.metric strong { font-size:18px; }
+    .round { margin-top:12px; padding:14px; background:#0c1015; border:1px solid #222a35; border-radius:14px; }
+    .candidate { padding:9px 0; border-top:1px dashed #28313e; }.candidate:first-of-type { border-top:0; }
+    .memory-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; margin-top:10px; }
     footer { margin-top:30px; color:#7f8b9b; font-size:13px; }
     code { background:#171d25; padding:2px 6px; border-radius:6px; }
-    @media(max-width:900px){ .grid,.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr} textarea,pre{min-height:340px} }
+    @media(max-width:900px){ .grid,.two{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.memory-row{grid-template-columns:1fr} textarea,pre{min-height:330px} }
   </style>
 </head>
 <body>
 <main>
-  <span class="badge">v0.2 · open source · local-first · zero API calls</span>
+  <span class="badge">v0.3 · open source · local-first · knowledge-backed triple review</span>
   <h1>Video Prompt Preflight</h1>
-  <p>Paste a normal AI-video prompt. VPP deterministically extracts a Scene Spec, catches contradictions and timing pressure, simulates a short scene, and compiles a smaller constrained prompt before you spend a generation credit.</p>
+  <p>Keep the fast zero-API preflight, or run a three-round local review that compares prompt candidates, matches provider/research failure patterns, and applies an independent gatekeeper before generation.</p>
+
+  <div class="toolbar">
+    <label>Provider <select id="provider"><option value="generic">Generic</option><option value="veo" selected>Gemini / Veo</option><option value="runway">Runway</option></select></label>
+    <span class="pill">Fast mode = zero API calls</span>
+    <span class="pill">Triple Verify = zero API calls in v0.3</span>
+  </div>
 
   <div class="grid">
     <section class="card">
       <h2>Free-form prompt</h2>
       <textarea id="promptInput" spellcheck="false"></textarea>
       <div class="actions">
-        <button class="primary" id="analyzeBtn">Analyze Prompt</button>
+        <button class="primary" id="analyzeBtn">Fast Analyze</button>
+        <button class="accent" id="tripleBtn">Triple Verify</button>
         <button class="secondary" id="optimizeBtn">Optimize</button>
         <button class="secondary" id="sampleBtn">Load ver- sample</button>
         <button class="secondary" id="badBtn">Load conflict sample</button>
@@ -58,8 +67,8 @@
     </section>
 
     <section class="card">
-      <h2>Optimized prompt</h2>
-      <pre id="compiledOutput">Analyze or optimize a prompt.</pre>
+      <h2>Selected prompt</h2>
+      <pre id="compiledOutput">Analyze or verify a prompt.</pre>
       <div class="actions"><button class="secondary" id="copyBtn">Copy Prompt</button></div>
     </section>
   </div>
@@ -69,6 +78,7 @@
       <h2 id="status">Not analyzed</h2>
       <strong class="pill" id="risk">Risk: —</strong>
       <strong class="pill" id="simulation">Simulation: —</strong>
+      <strong class="pill" id="confidence">Confidence: —</strong>
     </div>
     <div class="metrics">
       <div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div>
@@ -80,20 +90,36 @@
     <div id="findings"></div>
   </section>
 
+  <section class="card result" id="roundsCard">
+    <h2>Three review rounds</h2>
+    <div id="rounds"><p>Press <strong>Triple Verify</strong> to run independent review roles.</p></div>
+  </section>
+
   <div class="two">
+    <section class="card"><h2>Extracted Scene Spec</h2><pre class="small" id="sceneOutput"></pre></section>
     <section class="card">
-      <h2>Extracted Scene Spec</h2>
-      <pre class="small" id="sceneOutput"></pre>
-    </section>
-    <section class="card">
-      <h2>What v0.2 checks</h2>
-      <p><code>duration conflicts</code> · <code>music conflicts</code> · <code>subtitle conflicts</code> · <code>German-by-presenter conflicts</code> · <code>speech density</code> · <code>timeline overflow</code> · <code>action density</code> · <code>screen-text whitelist</code> · <code>Arabic on-screen policy</code>.</p>
-      <p>VPP intentionally does not invent missing creative content. When extraction is uncertain, it keeps the result conservative and asks the prompt to become more explicit.</p>
+      <h2>Knowledge Engine</h2>
+      <p>Evidence packs currently cover official Veo guidance, official Runway prompting guidance, and research taxonomies from VBench, T2V-CompBench and EvalCrafter. Rules are lightweight and run locally.</p>
+      <p><code>provider fit</code> · <code>timing</code> · <code>negative phrasing</code> · <code>multilingual audio</code> · <code>temporal consistency</code> · <code>compositional complexity</code>.</p>
     </section>
   </div>
 
-  <footer>VPP reduces preventable prompt failures; it cannot guarantee stochastic video generation will be artifact-free.</footer>
+  <section class="card result">
+    <h2>Failure Memory</h2>
+    <p>Save a real generator failure locally. It stays in this browser and can be used as a regression reminder without uploading the video or prompt.</p>
+    <div class="memory-row">
+      <input id="failureCategory" placeholder="category, e.g. exact_text" />
+      <input id="failureObserved" placeholder="what went wrong" />
+      <input id="failureExpected" placeholder="what should happen" />
+      <button class="secondary" id="saveFailureBtn">Save</button>
+    </div>
+    <div id="failureList"></div>
+  </section>
+
+  <footer>VPP reduces preventable failures and reports evidence-backed risks. The confidence band is a heuristic preflight signal, not a probability or a guarantee that a stochastic video generator will be artifact-free.</footer>
 </main>
-<script src="app.js"></script>
+<script src="core.js"></script>
+<script src="triple.js"></script>
+<script src="ui.js"></script>
 </body>
 </html>

@@ -1,0 +1,30 @@
+provider: veo
+name: Google Veo 3
+rules:
+  - id: veo.prompt.structure
+    title: Cover the shot, style, lighting, character/location and action only when relevant
+    trigger: veo_sparse_structure
+    severity: info
+    points: 0
+    recommendation: Add missing control details only when they materially affect the intended shot; do not pad the prompt.
+    sources:
+      - name: Google DeepMind — How to create effective prompts with Veo 3
+        url: https://deepmind.google/models/veo/prompt-guide/
+  - id: veo.audio.explicit
+    title: Make dialogue and sound ownership explicit
+    trigger: mixed_language_audio
+    severity: warning
+    points: 10
+    recommendation: Assign each spoken language to one explicit speaker/voice and separate dialogue from sound-design instructions.
+    sources:
+      - name: Google DeepMind — How to create effective prompts with Veo 3
+        url: https://deepmind.google/models/veo/prompt-guide/
+  - id: veo.fast_action.detail
+    title: Fast complex action needs a clear play-by-play
+    trigger: complex_action_without_timeline
+    severity: warning
+    points: 10
+    recommendation: Convert fast multi-step action into a short ordered timeline with one primary action per beat.
+    sources:
+      - name: Google DeepMind — How to create effective prompts with Veo 3
+        url: https://deepmind.google/models/veo/prompt-guide/

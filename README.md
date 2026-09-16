@@ -1,57 +1,31 @@
 # Video Prompt Preflight (VPP)
 
-An open-source, local-first **preflight linter + short-scene simulator + compact prompt compiler** for AI video generation.
+An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. In v0.2 it can accept a normal free-form prompt, conservatively extract a Scene Spec, detect contradictions, estimate timing pressure, and compile a shorter generator-friendly prompt.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.3 keeps the deterministic v0.2 core and adds provider/research knowledge packs, three conservative prompt candidates, a three-round local review, an independent gatekeeper, and failure-memory matching.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
 ## Why
 
-AI-video prompts often fail for predictable reasons:
+AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-- conflicting scene durations;
-- too many visual actions packed into 10 seconds;
-- on-screen text in the wrong language;
-- unwanted automatic subtitles;
-- exact spelling not constrained;
-- German words assigned to an Arabic-only presenter;
-- speech that cannot comfortably fit the scene;
-- music/subtitle/audio instructions that contradict each other;
-- long repetitive prompts that increase instruction collisions.
-
-Most of these checks do not need another LLM call.
-
-## v0.2: paste a normal prompt
+## v0.3: fast mode or Triple Verify
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
+vpp triple-review examples/ver_scene_1_prompt.txt --provider veo
 ```
 
-Example:
+Triple Verify uses three local rounds:
 
-```text
-PASS | risk=0/100 | simulation=comfortable
-[INFO] preflight.clean: No deterministic preflight risks detected.
-```
+1. **Correctness + candidate comparison** — deterministic checks and A/B/C candidate scoring.
+2. **Failure prediction + evidence + memory** — provider guidance, research taxonomies, red-team checks and prior failures.
+3. **Independent gatekeeper** — blocks hard errors, timing overflow and any candidate that drops required constraints.
 
-Convert prose to a Scene Spec:
-
-```bash
-vpp import-prompt examples/ver_scene_1_prompt.txt -o /tmp/scene.yml
-```
-
-Generate a compact candidate prompt:
-
-```bash
-vpp optimize examples/ver_scene_1_prompt.txt -o /tmp/optimized.txt --spec /tmp/scene.yml
-```
-
-For prompts containing real semantic conflicts, VPP produces a constrained candidate **and marks it for human review** instead of pretending an ambiguous choice is certainly correct.
+The browser UI exposes the same flow without a backend. See `docs/AGENT_FACTORY.md`.
 
 ## Scene Spec
-
-The structured representation remains the most reliable authoring contract:
 
 ```yaml
 name: ver- hook
@@ -75,58 +49,47 @@ vpp simulate examples/ver_scene_1.yml
 vpp compile examples/ver_scene_1.yml
 ```
 
-## What v0.2 checks
+## Deterministic core checks
 
-- positive scene duration;
-- conflicting duration mentions in raw prompts;
-- timeline overflow;
-- action/event density;
+- positive scene duration and duration conflicts;
+- timeline overflow and event density;
 - Arabic text when Arabic-on-screen is forbidden;
 - exact screen-text whitelist violations;
-- excessive screen-text items;
-- dense Arabic dialogue for the requested duration;
+- dense dialogue for the requested duration;
 - German speech assigned to an Arabic-only presenter;
-- music contradictions;
-- subtitle contradictions;
-- presenter-language contradictions;
-- rough prompt verbosity risk.
+- music, subtitle and presenter-language contradictions.
 
-## Short-scene simulator
+## Knowledge Engine
 
-VPP estimates:
+Current lightweight packs:
 
-- speech words and estimated speech seconds;
-- speech utilization of the scene;
-- event count and event rate;
-- timeline utilization;
-- screen-text item count;
-- overall state: `comfortable`, `tight`, or `overflow`.
+- **Gemini/Veo:** shot structure, explicit audio ownership and ordered play-by-play for complex action, grounded in Google DeepMind's Veo prompt guide.
+- **Runway:** positive phrasing, motion focus and duration-vs-motion guidance, grounded in official Runway guides.
+- **Research:** temporal consistency, compositional complexity and separated QA dimensions, mapped to VBench, T2V-CompBench and EvalCrafter taxonomies.
 
-It is a preflight budget model, not a video renderer.
+These are advisory unless a failure pattern is promoted into a deterministic regression rule.
 
 ## Browser UI
 
-The `web/` app accepts a free-form prompt directly. It runs locally in the browser with no API key and no backend.
+The `web/` app runs locally in the browser with no API key and no backend.
 
 Features:
 
-- free-form prompt import;
-- PASS/FAIL + risk score;
-- timing simulation;
-- contradiction detection;
-- extracted Scene Spec preview;
-- compact compiled prompt;
-- good and conflicting demo prompts.
-
-Open `web/index.html` locally or publish it with the included GitHub Pages workflow.
+- provider selector for Generic, Gemini/Veo and Runway;
+- Fast Analyze mode with zero API calls;
+- Triple Verify with three local review rounds and zero API calls;
+- evidence links for knowledge-backed findings;
+- three prompt candidates with hard-constraint coverage scoring;
+- local browser Failure Memory;
+- timing simulation, contradiction detection and Scene Spec preview.
 
 ## Install
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/muhamadmostafa2013-design/video-prompt-preflight.git
 cd video-prompt-preflight
 python -m venv .venv
-# Windows: .venv\\Scripts\\activate
+# Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -e '.[dev]'
 pytest -q
@@ -142,6 +105,7 @@ vpp simulate <scene.yml>
 vpp import-prompt <prompt.txt> -o scene.yml
 vpp lint-prompt <prompt.txt>
 vpp optimize <prompt.txt> -o optimized.txt --spec scene.yml
+vpp triple-review <prompt.txt> --provider veo
 ```
 
 ## Regression-first workflow
@@ -166,21 +130,20 @@ The first regression corpus comes from a multilingual Arabic/German educational-
 Free-form Prompt
       │
       ├── Deterministic Parser ──> Scene Spec
-      │                              │
-      │                              ├── Linter ──> PASS / FAIL + Risk
-      │                              ├── Simulator ──> timing pressure
-      │                              ├── Safe Fixes
+      │                              ├── Linter
+      │                              ├── Simulator
       │                              └── Compact Compiler
-      │                                      │
-      └──────────────────────────────────────> Generator Prompt
-                                               │
-                                               v
-                                         AI Video Generator
-                                               │
-                                          future QA loop
-                                               │
-                                        Failure Corpus
-                                               └──> regression rules
+      ├── Candidate Factory ──> A / B / C
+      ├── Knowledge Scout ──> provider + benchmark patterns
+      ├── Adversarial Critic + Failure Memory
+      └── Independent Gatekeeper ──> selected generator prompt
+                                              │
+                                              v
+                                        AI Video Generator
+                                              │
+                                         future QA loop
+                                              │
+                                       Failure Corpus
 ```
 
 ## Principles
@@ -194,8 +157,9 @@ Free-form Prompt
 
 ## Roadmap
 
-- **v0.3:** provider profiles, Promptfoo adapter, optional DSPy/local-model semantic reviewer, prompt comparison.
-- **v0.4:** post-generation frame/audio QA, exact-text verification, VBench/VideoScore adapters, failure-memory dashboard.
+- **v0.3 (current):** provider/research knowledge packs, A/B/C prompt comparison, triple local review, independent gatekeeper, failure memory.
+- **v0.4:** post-generation frame/audio QA, exact-text verification, VBench/VideoScore adapters, richer failure-memory dashboard.
+- **v0.5:** optional Promptfoo/DSPy/local-model semantic agents behind explicit adapters and token budgets.
 
 ## License
 

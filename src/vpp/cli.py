@@ -13,6 +13,7 @@ from .optimizer import optimize_prompt
 from .parser import parse_prompt
 from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
+from .triple_review import triple_review
 
 
 def _read_text(path: str) -> str:
@@ -62,11 +63,7 @@ def cmd_import_prompt(args: argparse.Namespace) -> int:
 
 def cmd_lint_prompt(args: argparse.Namespace) -> int:
     scene, report = analyze_prompt(_read_text(args.file))
-    payload = {
-        "report": report.to_dict(),
-        "simulation": simulate_scene(scene).to_dict(),
-        "scene": scene,
-    }
+    payload = {"report": report.to_dict(), "simulation": simulate_scene(scene).to_dict(), "scene": scene}
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
@@ -91,6 +88,23 @@ def cmd_optimize(args: argparse.Namespace) -> int:
     if args.spec:
         dump_scene(result["scene"], args.spec)
     return 0 if result["after"]["passed"] else 2
+
+
+def cmd_triple_review(args: argparse.Namespace) -> int:
+    result = triple_review(_read_text(args.file), provider=args.provider)
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print(f"{'PASS' if result['passed'] else 'FAIL'} | provider={result['provider']} | score={result['heuristic_score']}/100 | confidence={result['confidence_band']}")
+        for rnd in result["rounds"]:
+            print(f"ROUND {rnd['round']} — {rnd['name']}")
+            for f in rnd.get("findings", []):
+                print(f"  [{f['severity'].upper()}] {f['agent']} · {f['rule_id']}: {f['message']}")
+            if rnd.get("winner"):
+                print(f"  winner: {rnd['winner']}")
+        print("\nFINAL PROMPT\n------------")
+        print(result["final_prompt"])
+    return 0 if result["passed"] else 2
 
 
 def cmd_simulate(args: argparse.Namespace) -> int:
@@ -137,6 +151,12 @@ def build_parser() -> argparse.ArgumentParser:
     opt.add_argument("-o", "--output")
     opt.add_argument("--spec", help="Optionally write extracted Scene Spec")
     opt.set_defaults(func=cmd_optimize)
+
+    triple = sub.add_parser("triple-review", help="Run 3-round local multi-agent preflight")
+    triple.add_argument("file")
+    triple.add_argument("--provider", choices=["generic", "veo", "runway"], default="generic")
+    triple.add_argument("--json", action="store_true")
+    triple.set_defaults(func=cmd_triple_review)
 
     sim = sub.add_parser("simulate", help="Estimate timing pressure for a Scene Spec")
     sim.add_argument("file")

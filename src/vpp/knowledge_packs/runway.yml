@@ -1,0 +1,30 @@
+provider: runway
+name: Runway Gen-4 / Gen-4.5
+rules:
+  - id: runway.positive_phrasing
+    title: Prefer positive phrasing over negative prompting
+    trigger: negative_instruction_overload
+    severity: warning
+    points: 12
+    recommendation: Rewrite avoid/no/don't constraints as the desired visible state where possible, while keeping safety or exact-output constraints outside the creative description.
+    sources:
+      - name: Runway — Gen-4 Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/39789879462419-Gen-4-Video-Prompting-Guide
+  - id: runway.motion.focus
+    title: Keep motion instructions direct and simple
+    trigger: action_density_high
+    severity: warning
+    points: 12
+    recommendation: Keep the essential subject motion, camera motion and scene motion; split unrelated transformations into another shot.
+    sources:
+      - name: Runway — Gen-4 Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/39789879462419-Gen-4-Video-Prompting-Guide
+  - id: runway.duration.motion
+    title: Multiple movements benefit from the longer short-form duration
+    trigger: short_duration_complex_motion
+    severity: warning
+    points: 10
+    recommendation: Reduce motion beats or use a longer supported duration when the provider allows it.
+    sources:
+      - name: Runway — Creating with Gen-4 Video
+        url: https://help.runwayml.com/hc/en-us/articles/37327109429011-Creating-with-Gen-4-Video

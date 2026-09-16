@@ -7,31 +7,38 @@
 - compact prompt compiler
 - CLI
 - zero-backend browser UI
-- multilingual educational-video regression sample
 
-## 0.2 — current
+## 0.2
 - free-form prompt importer
-- raw prompt contradiction detector
-- short-scene timing simulator
-- speech utilization estimate
-- action-density estimate
+- contradiction detector
+- short-scene simulator
 - constrained prompt optimizer
-- review-required marker for ambiguous conflict resolution
-- free-form browser workflow
 
-## 0.3
-- project-level rule profiles
-- provider profiles for Gemini/Veo, Sora and others
-- Promptfoo evaluation adapter
-- optional DSPy optimizer
-- optional local-model semantic reviewer
-- prompt A/B comparison and regression snapshots
-- typography/readability budgets
+## 0.3 — current
+- Gemini/Veo and Runway knowledge packs
+- research-pattern pack from VBench / T2V-CompBench / EvalCrafter categories
+- three conservative prompt candidates
+- three review rounds
+- adversarial critic
+- independent gatekeeper
+- hard-constraint coverage check
+- bundled regression failure memory
+- local browser Failure Memory
+- evidence links in the UI
+- Fast mode remains zero-API
+- Triple Verify remains zero-API
 
 ## 0.4
-- frame sampling
+- upload generated video
+- frame sampling and visual QA
 - exact on-screen text verification
-- audio/transcript verification adapters
-- VBench / VideoScore integration where appropriate
-- failure corpus dashboard
-- provider-specific failure memory
+- audio/transcript verification
+- VBench / VideoScore adapters where appropriate
+- provider-specific failure dashboard
+
+## 0.5
+- optional Promptfoo adapter
+- optional DSPy optimizer
+- optional local/remote semantic agents
+- explicit token budgets and circuit breakers
+- judge diversity / model-provider adapters

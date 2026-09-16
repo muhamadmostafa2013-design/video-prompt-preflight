@@ -1,0 +1,30 @@
+provider: generic
+name: Research benchmark patterns
+rules:
+  - id: research.temporal_consistency
+    title: Dense temporal changes raise consistency risk
+    trigger: temporal_consistency_risk
+    severity: warning
+    points: 8
+    recommendation: Reduce independent state changes and keep identity/background anchors stable across the shot.
+    sources:
+      - name: VBench — 16 video-generation evaluation dimensions
+        url: https://github.com/Vchitect/VBench
+  - id: research.compositionality
+    title: Multi-object and relation binding is a known hard category
+    trigger: compositional_complexity
+    severity: warning
+    points: 8
+    recommendation: Make object identities and relations explicit; avoid changing several attributes, actions and relationships at the same moment.
+    sources:
+      - name: T2V-CompBench — compositional text-to-video benchmark
+        url: https://github.com/KaiyueSun98/T2V-CompBench
+  - id: research.eval_dimensions
+    title: Evaluate visual, content and motion quality separately
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Keep post-generation QA separated into visual quality, text-video alignment and motion/temporal checks.
+    sources:
+      - name: EvalCrafter — video generation evaluation toolkit
+        url: https://github.com/evalcrafter/EvalCrafter

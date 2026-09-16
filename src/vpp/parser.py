@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
 
 from .text import contains_arabic
 
@@ -39,7 +38,6 @@ def _looks_like_exact_text(line: str) -> bool:
         return False
     if line.endswith(":"):
         return False
-    # Exact screen text is usually short and not a full instruction sentence.
     words = line.split()
     if len(words) > 8:
         return False
@@ -103,7 +101,6 @@ def _extract_screen_text(text: str) -> list[str]:
         if marker_hit and (line.endswith(":") or low in _MARKERS or low.startswith(tuple(_MARKERS))):
             capture = True
             capture_budget = 8
-            # Handle inline exact text: On screen: ver-
             if ":" in line:
                 inline = line.split(":", 1)[1].strip().strip('"“”')
                 if _looks_like_exact_text(inline):
@@ -113,19 +110,16 @@ def _extract_screen_text(text: str) -> list[str]:
         if capture:
             capture_budget -= 1
             candidate = line.strip('"“”')
-            # Ignore arrows-only lines but preserve text containing arrows.
             if _looks_like_exact_text(candidate):
                 out.append(candidate)
             if capture_budget <= 0 or low.startswith(_STOP_PREFIXES):
                 capture = False
 
-    # Quoted non-Arabic strings explicitly following screen/display language.
     for m in re.finditer(r"(?:on[- ]screen|display|show|text)\s*(?:text)?\s*[:=]?\s*[\"“]([^\"”]+)[\"”]", text, re.I):
         value = m.group(1).strip()
         if value and not contains_arabic(value):
             out.append(value)
 
-    # Stable de-duplication.
     seen: set[str] = set()
     cleaned: list[str] = []
     for item in out:
@@ -138,8 +132,7 @@ def _extract_screen_text(text: str) -> list[str]:
 
 def _extract_timeline(text: str, duration: float) -> list[dict]:
     events: list[dict] = []
-    lines = text.splitlines()
-    for raw in lines:
+    for raw in text.splitlines():
         line = _clean_line(raw)
         m = _RANGE_RE.search(line)
         if not m:
@@ -148,19 +141,13 @@ def _extract_timeline(text: str, duration: float) -> list[dict]:
         end = float(m.group("end"))
         if end <= start:
             continue
-        action = line[m.end():].lstrip(": -–—").strip()
-        if not action:
-            action = "unspecified action"
+        action = line[m.end():].lstrip(": -–—").strip() or "unspecified action"
         events.append({"seconds": round(end - start, 3), "action": action})
     return events
 
 
 def parse_prompt(text: str) -> dict:
-    """Heuristically convert a free-form video prompt into a Scene Spec.
-
-    This parser is deterministic. It intentionally favors conservative extraction over
-    inventing missing semantic content.
-    """
+    """Heuristically convert a free-form video prompt into a conservative Scene Spec."""
     durations = [float(x) for x in _DURATION_RE.findall(text)]
     duration = durations[0] if durations else 10.0
     aspect_match = _ASPECT_RE.search(text)
@@ -174,7 +161,7 @@ def parse_prompt(text: str) -> dict:
     german_forbidden = bool(re.search(r"presenter[^.\n]{0,100}(?:must not|do not|don't)[^.\n]{0,50}pronounce[^.\n]{0,40}german", lower))
     if german_forbidden:
         presenter_arabic_only = True
-    same_presenter = "same presenter" in lower or "same male presenter" in lower
+    same_presenter = bool(re.search(r"same(?:\s+\w+){0,2}\s+presenter", lower))
 
     spoken_arabic = _extract_arabic_spoken(text)
     screen_text = _extract_screen_text(text)
@@ -188,7 +175,7 @@ def parse_prompt(text: str) -> dict:
         if phrase.lower() in lower and phrase not in style:
             style.append(phrase)
 
-    scene = {
+    return {
         "name": "Imported free-form prompt",
         "aspect_ratio": aspect,
         "duration_seconds": duration,
@@ -209,9 +196,5 @@ def parse_prompt(text: str) -> dict:
         },
         "forbidden": [],
         "source_prompt": text,
-        "parse_meta": {
-            "duration_mentions": durations,
-            "parser": "deterministic-v0.2",
-        },
+        "parse_meta": {"duration_mentions": durations, "parser": "deterministic-v0.3"},
     }
-    return scene

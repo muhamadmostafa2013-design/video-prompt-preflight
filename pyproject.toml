@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "video-prompt-preflight"
-version = "0.2.0"
+version = "0.3.0"
 description = "Deterministic preflight checks and compact prompt compilation for AI video generators."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,3 +35,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+"vpp" = ["knowledge_packs/*.yml"]
