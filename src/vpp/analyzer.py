@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import re
+
 from .models import Finding, Report
 from .text import contains_arabic, word_count
+
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
+_STABLE_TEXT_RE = re.compile(r"\b(?:show|display|hold|static|keep|present|visible)\b", re.I)
 
 
 def _add(report: Report, rule_id: str, severity: str, message: str, suggestion: str | None, points: int) -> None:
@@ -54,6 +59,35 @@ def analyze_scene(scene: dict) -> Report:
                 break
         if total and duration and total > float(duration) + 0.05:
             _add(report, "timeline.overflow", "error", f"Timeline totals {total:.1f}s but scene is {duration}s.", "Shorten or remove timeline events.", 35)
+
+        actions = [str(event.get("action", "")) for event in events if isinstance(event, dict)]
+        morph_actions = [action for action in actions if _MORPH_RE.search(action)]
+        if screen_text and morph_actions:
+            _add(
+                report,
+                "screen_text.morph_risk",
+                "warning",
+                "Exact on-screen text is being morphed or animated between states; generative video can corrupt letters during the transition.",
+                "Use separate static text states with clean hard cuts, or add exact educational text in post-production.",
+                22,
+            )
+
+        if screen_text:
+            missing_stable = []
+            for item in screen_text:
+                needle = str(item).lower()
+                stable = any(needle in action.lower() and _STABLE_TEXT_RE.search(action) for action in actions)
+                if not stable:
+                    missing_stable.append(str(item))
+            if missing_stable:
+                _add(
+                    report,
+                    "screen_text.state_coverage",
+                    "warning",
+                    "Exact text states are not explicitly held as stable text: " + " | ".join(missing_stable),
+                    "Give every required string an explicit show/hold/static state; do not rely on a morph transition to imply the source or target text.",
+                    18,
+                )
 
     spoken = scene.get("spoken", {}) or {}
     arabic = str(spoken.get("arabic", ""))
