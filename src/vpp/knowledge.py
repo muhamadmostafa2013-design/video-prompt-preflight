@@ -50,6 +50,8 @@ def _triggered(trigger: str, f: dict) -> bool:
         return f["simulation_status"] in {"tight", "overflow"} or f["event_rate_per_10s"] > 5
     if trigger == "compositional_complexity":
         return f["object_complexity"] >= 2 and f["actions"] >= 4
+    if trigger == "exact_text_morph":
+        return f.get("exact_text_morph", False)
     return False
 
 
