@@ -1,0 +1,22 @@
+provider: kling
+name: Kling AI Video
+evidence_tier: A
+rules:
+  - id: kling.short_motion_budget
+    title: Movement and scene complexity should fit the short clip duration
+    trigger: short_duration_complex_motion
+    severity: warning
+    points: 10
+    recommendation: Simplify subject movement and scene changes; Kling's guide recommends straightforward movement that fits the clip.
+    sources:
+      - name: Kling AI — Text-to-Video Prompt Guide
+        url: https://kling.ai/quickstart/text-to-video-prompt-guide
+  - id: kling.camera_stack
+    title: Keep camera language distinct from subject movement
+    trigger: camera_motion_overload
+    severity: warning
+    points: 8
+    recommendation: Separate subject movement from camera language and reduce simultaneous camera instructions.
+    sources:
+      - name: Kling AI — Text-to-Video Prompt Guide
+        url: https://kling.ai/quickstart/text-to-video-prompt-guide
