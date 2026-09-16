@@ -1,0 +1,13 @@
+provider: pixverse
+name: PixVerse Video
+evidence_tier: A
+rules:
+  - id: pixverse.action_budget
+    title: Keep PixVerse prompts clear, direct and concrete
+    trigger: action_density_high
+    severity: warning
+    points: 8
+    recommendation: Reduce competing actions and rewrite poetic or ambiguous instructions as concrete subject, motion, environment, sound and camera controls.
+    sources:
+      - name: PixVerse V5.6 User Guide
+        url: https://docs.pixverse.ai/PixVerse-V5-6-User-Guide-2fe3e99bf350806f86adc8a55de3c3a7
