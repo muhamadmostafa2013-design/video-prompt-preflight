@@ -16,6 +16,6 @@ sich verhören
 TIMELINE:
 0-3s presenter delivers hook
 3-5s show ver- large and clean
-5-7s transform laufen into sich verlaufen
-7-9s transform hören into sich verhören
+5-7s show laufen as static text, hold clearly, hard cut, then show sich verlaufen as static text
+7-9s show hören as static text, hold clearly, hard cut, then show sich verhören as static text
 9-10s hold ver- centered
