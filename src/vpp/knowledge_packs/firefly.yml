@@ -1,0 +1,22 @@
+provider: firefly
+name: Adobe Firefly Video
+evidence_tier: A
+rules:
+  - id: firefly.subject_count
+    title: Firefly can become confused with more than four subjects
+    trigger: more_than_four_subjects
+    severity: warning
+    points: 12
+    recommendation: Reduce the shot to four or fewer primary subjects, or split the scene.
+    sources:
+      - name: Adobe Firefly — Writing effective text prompts for video generation
+        url: https://helpx.adobe.com/firefly/web/work-with-audio-and-video/work-with-video/writing-effective-text-prompts-for-video-generation.html
+  - id: firefly.structure
+    title: Firefly works best with a clear shot, character, action, location and aesthetic
+    trigger: veo_sparse_structure
+    severity: info
+    points: 0
+    recommendation: Add only the missing visual control that matters; keep wording clear and unambiguous.
+    sources:
+      - name: Adobe Firefly — Writing effective text prompts for video generation
+        url: https://helpx.adobe.com/firefly/web/work-with-audio-and-video/work-with-video/writing-effective-text-prompts-for-video-generation.html
