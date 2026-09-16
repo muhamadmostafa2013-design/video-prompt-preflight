@@ -28,3 +28,12 @@ rules:
     sources:
       - name: Google DeepMind — How to create effective prompts with Veo 3
         url: https://deepmind.google/models/veo/prompt-guide/
+  - id: veo.exact_text_morph
+    title: Exact text morphing has a confirmed VPP regression risk
+    trigger: exact_text_morph
+    severity: warning
+    points: 20
+    recommendation: Use discrete static text states separated by clean hard cuts. For spelling-critical educational text, prefer post-production overlays.
+    sources:
+      - name: VPP regression — exact-text morph corruption
+        url: https://github.com/muhamadmostafa2013-design/video-prompt-preflight/blob/main/failures/0003_exact_text_morph_corruption.json
