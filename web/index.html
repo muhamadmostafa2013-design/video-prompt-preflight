@@ -3,387 +3,90 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#08080b" />
+  <meta name="theme-color" content="#07070a" />
   <title>Video Prompt Preflight · Director's Room</title>
-  <meta name="description" content="A cinematic, local-first preflight studio with knowledge-backed triple review for AI video prompts." />
+  <meta name="description" content="A funny cinematic, local-first preflight studio for AI video prompts." />
   <style>
-    :root {
-      color-scheme: dark;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --bg:#07070a;
-      --panel:#111116;
-      --panel-2:#17171e;
-      --ink:#fff8ec;
-      --muted:#aaa7b1;
-      --line:#2e2c35;
-      --red:#ff554f;
-      --gold:#ffc857;
-      --blue:#63a8ff;
-      --green:#50df8d;
-      --purple:#a777ff;
-      --shadow:0 24px 70px rgba(0,0,0,.38);
-    }
-    * { box-sizing:border-box; }
-    html { scroll-behavior:smooth; }
-    body {
-      margin:0;
-      min-height:100vh;
-      color:var(--ink);
-      background:
-        radial-gradient(circle at 10% 0%, rgba(255,85,79,.13), transparent 28rem),
-        radial-gradient(circle at 92% 15%, rgba(99,168,255,.10), transparent 30rem),
-        radial-gradient(circle at 50% 100%, rgba(167,119,255,.09), transparent 34rem),
-        var(--bg);
-      overflow-x:hidden;
-    }
-    body::before {
-      content:"";
-      position:fixed;
-      inset:0;
-      pointer-events:none;
-      opacity:.11;
-      z-index:20;
-      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
-      mix-blend-mode:soft-light;
-    }
-    button, select, input, textarea { font:inherit; }
-    button { -webkit-tap-highlight-color:transparent; }
-    main { max-width:1220px; margin:0 auto; padding:22px 18px 72px; position:relative; }
-
-    .filmstrip {
-      height:24px;
-      border-block:1px solid rgba(255,200,87,.24);
-      background:
-        repeating-linear-gradient(90deg, transparent 0 24px, rgba(255,200,87,.34) 24px 32px, transparent 32px 48px),
-        linear-gradient(90deg, rgba(255,85,79,.12), rgba(255,200,87,.08), rgba(99,168,255,.10));
-      opacity:.65;
-      border-radius:10px;
-      margin-bottom:24px;
-    }
-    .hero {
-      position:relative;
-      overflow:hidden;
-      padding:34px clamp(20px,4vw,44px);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:28px;
-      background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));
-      box-shadow:var(--shadow);
-      isolation:isolate;
-    }
-    .hero::after {
-      content:"";
-      position:absolute;
-      width:330px;
-      height:330px;
-      right:-140px;
-      top:-170px;
-      background:radial-gradient(circle,rgba(255,200,87,.25),transparent 66%);
-      z-index:-1;
-    }
-    .eyebrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-    .badge,.pill {
-      display:inline-flex;
-      align-items:center;
-      gap:7px;
-      border:1px solid rgba(255,255,255,.13);
-      padding:7px 11px;
-      border-radius:999px;
-      color:#d8d4dc;
-      font-size:13px;
-      background:rgba(8,8,12,.45);
-      backdrop-filter:blur(10px);
-    }
-    .badge.hot { border-color:rgba(255,200,87,.35); color:#ffe3a1; }
-    h1 { margin:14px 0 9px; font-size:clamp(38px,7vw,76px); line-height:.96; letter-spacing:-.055em; max-width:900px; }
-    .title-accent { color:var(--gold); text-shadow:0 0 35px rgba(255,200,87,.18); }
-    .hero p { max-width:760px; font-size:clamp(16px,2vw,19px); margin:14px 0 0; }
-    .hero-joke { color:#eee9f0; font-weight:650; }
-    p { color:var(--muted); line-height:1.65; }
-
-    .toolbar {
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin:18px 0 0;
-    }
-    .toolbar label {
-      display:flex;
-      gap:8px;
-      align-items:center;
-      font-weight:750;
-      color:#ddd8e0;
-    }
-    select,input,textarea,pre {
-      color:#f6f0f8;
-      border:1px solid #34313d;
-      background:rgba(7,7,11,.82);
-      outline:none;
-      transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-    }
-    select:focus,input:focus,textarea:focus { border-color:rgba(255,200,87,.55); box-shadow:0 0 0 4px rgba(255,200,87,.08); }
-    select,input { padding:10px 12px; min-height:42px; border-radius:12px; }
-
-    .section-label {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:14px;
-      color:#f6ecf7;
-    }
-    .section-label .icon {
-      width:38px;
-      height:38px;
-      display:grid;
-      place-items:center;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.09);
-      background:linear-gradient(145deg,rgba(255,200,87,.16),rgba(255,85,79,.08));
-      box-shadow:inset 0 0 20px rgba(255,255,255,.025);
-    }
-    h2 { margin:0; font-size:clamp(23px,3vw,32px); letter-spacing:-.025em; }
-    h3 { margin:12px 0 8px; }
-
-    .grid,.two { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px; }
-    .card {
-      position:relative;
-      background:linear-gradient(155deg,rgba(20,20,27,.96),rgba(12,12,17,.96));
-      border:1px solid rgba(255,255,255,.10);
-      border-radius:24px;
-      padding:20px;
-      box-shadow:0 15px 50px rgba(0,0,0,.24);
-    }
-    .card::before {
-      content:"";
-      position:absolute;
-      inset:0;
-      border-radius:inherit;
-      pointer-events:none;
-      background:linear-gradient(120deg,rgba(255,255,255,.025),transparent 35%);
-    }
-    .card.featured { border-color:rgba(255,200,87,.21); }
-    .microcopy { color:#7f7b88; font-size:13px; margin:-4px 0 12px; }
-
-    textarea,pre {
-      width:100%;
-      min-height:390px;
-      margin:0;
-      padding:16px;
-      border-radius:16px;
-      font:13.5px/1.62 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-      white-space:pre-wrap;
-      overflow:auto;
-    }
-    textarea { resize:vertical; }
-    pre.small { min-height:220px; max-height:430px; }
-
-    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
-    button {
-      min-height:44px;
-      border-radius:13px;
-      padding:10px 15px;
-      font-weight:800;
-      cursor:pointer;
-      border:1px solid transparent;
-      transition:transform .16s ease, filter .16s ease, box-shadow .16s ease;
-    }
-    button:hover { transform:translateY(-2px); filter:brightness(1.07); }
-    button:active { transform:translateY(0) scale(.985); }
-    button.primary { background:linear-gradient(135deg,#f9f7f0,#dcd9e2); color:#111016; box-shadow:0 8px 28px rgba(255,255,255,.08); }
-    button.secondary { background:#20202a; color:#f4eff6; border-color:#373443; }
-    button.accent { background:linear-gradient(135deg,#d9393f,#ff6656); color:white; border-color:#ff776d; box-shadow:0 12px 35px rgba(255,85,79,.18); }
-    #tripleBtn::before { content:"🎬 "; }
-    #analyzeBtn::before { content:"⚡ "; }
-    #optimizeBtn::before { content:"✂️ "; }
-    #copyBtn::before { content:"📋 "; }
-
-    .result { margin-top:18px; }
-    .summary { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    #status { font-size:clamp(27px,4vw,40px); letter-spacing:-.035em; }
-    .pass { color:var(--green); }
-    .fail { color:#ff7975; }
-    .warn { color:var(--gold); }
-    .info { color:var(--blue); }
-    .finding { border-top:1px solid #292732; padding:13px 0; line-height:1.52; }
-    .finding:first-child { border-top:0; }
-    .finding small { color:#aaa4b1; }
-    .source { margin-top:6px; font-size:12px; }
-    .source a { color:#8ebcff; }
-
-    .metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-top:16px; }
-    .metric {
-      background:linear-gradient(150deg,#0b0b0f,#121219);
-      border:1px solid #292732;
-      border-radius:16px;
-      padding:13px;
-      min-height:82px;
-    }
-    .metric small { color:#817d89; display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:.08em; font-size:10px; }
-    .metric strong { font-size:20px; }
-
-    .round {
-      margin-top:12px;
-      padding:15px;
-      background:linear-gradient(145deg,#0b0b10,#121219);
-      border:1px solid #2c2936;
-      border-radius:16px;
-    }
-    .round h3::before { content:"🎞️ "; }
-    .candidate { padding:10px 0; border-top:1px dashed #34313d; }
-    .candidate:first-of-type { border-top:0; }
-    .memory-row { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; margin-top:10px; }
-    .knowledge-tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-    .knowledge-tags code { background:#191821; padding:6px 9px; border-radius:999px; border:1px solid #2d2b36; }
-    code { background:#1a1921; padding:2px 6px; border-radius:6px; }
-
-    .marquee {
-      display:flex;
-      gap:16px;
-      align-items:center;
-      margin:20px 0 0;
-      padding:11px 14px;
-      border:1px dashed rgba(255,200,87,.25);
-      border-radius:16px;
-      color:#c6beca;
-      font-size:13px;
-      overflow:hidden;
-    }
-    .marquee span { white-space:nowrap; }
-    .marquee b { color:var(--gold); }
-    footer { margin-top:32px; color:#777280; font-size:13px; text-align:center; }
-
-    @media(max-width:900px) {
-      main { padding-inline:12px; }
-      .hero { border-radius:22px; padding:25px 20px; }
-      .grid,.two { grid-template-columns:1fr; }
-      .metrics { grid-template-columns:1fr 1fr; }
-      .memory-row { grid-template-columns:1fr; }
-      textarea,pre { min-height:330px; }
-      .card { border-radius:20px; padding:16px; }
-      .toolbar .pill { width:100%; justify-content:center; }
-      .actions button { flex:1 1 calc(50% - 8px); }
-    }
-    @media(max-width:520px) {
-      h1 { font-size:45px; }
-      .actions button { flex:1 1 100%; }
-      .metrics { grid-template-columns:1fr 1fr; }
-      .filmstrip { margin-inline:5px; }
-      .marquee { gap:10px; font-size:12px; }
-    }
-    @media(prefers-reduced-motion:reduce) {
-      html { scroll-behavior:auto; }
-      *,*::before,*::after { transition:none!important; animation:none!important; }
-    }
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#07070a;--card:#121219;--ink:#fff8ec;--muted:#aaa6b1;--line:#2d2a35;--red:#ff5b54;--gold:#ffc857;--blue:#69aaff;--green:#50df8d;--shadow:0 22px 70px rgba(0,0,0,.35)}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--ink);background:radial-gradient(circle at 12% 0%,rgba(255,91,84,.15),transparent 25rem),radial-gradient(circle at 92% 12%,rgba(105,170,255,.11),transparent 28rem),var(--bg);overflow-x:hidden}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.08;z-index:20;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
+    main{max-width:980px;margin:0 auto;padding:18px 14px 60px;position:relative}.filmstrip{height:20px;border-block:1px solid rgba(255,200,87,.24);background:repeating-linear-gradient(90deg,transparent 0 22px,rgba(255,200,87,.34) 22px 30px,transparent 30px 46px);opacity:.6;border-radius:9px;margin-bottom:18px}
+    .hero{padding:28px clamp(18px,4vw,38px);border:1px solid rgba(255,255,255,.1);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:var(--shadow)}
+    .eyebrow{display:flex;gap:7px;flex-wrap:wrap}.badge,.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.13);padding:7px 10px;border-radius:999px;color:#d9d4dc;font-size:12px;background:rgba(8,8,12,.48)}.badge.hot{color:#ffe4a2;border-color:rgba(255,200,87,.36)}
+    h1{font-size:clamp(38px,7vw,68px);line-height:.96;letter-spacing:-.055em;margin:14px 0 10px}.gold{color:var(--gold)}p{color:var(--muted);line-height:1.6}.hero p{font-size:clamp(15px,2vw,18px);max-width:760px;margin:10px 0}.joke{color:#f1ebf2;font-weight:700}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.toolbar label{display:flex;gap:8px;align-items:center;font-weight:800}select,input,textarea,pre{color:#f6f0f8;border:1px solid #34313d;background:rgba(7,7,11,.86);outline:none}select,input{padding:10px 12px;min-height:42px;border-radius:12px}textarea:focus,select:focus,input:focus{border-color:rgba(255,200,87,.6);box-shadow:0 0 0 4px rgba(255,200,87,.08)}
+    .card{margin-top:18px;background:linear-gradient(155deg,rgba(20,20,27,.97),rgba(12,12,17,.97));border:1px solid rgba(255,255,255,.1);border-radius:23px;padding:18px;box-shadow:0 14px 45px rgba(0,0,0,.22)}.section-title{display:flex;align-items:center;gap:10px;margin-bottom:12px}.section-title .icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,rgba(255,200,87,.17),rgba(255,91,84,.09));border:1px solid rgba(255,255,255,.08)}h2{font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:-.025em}.micro{font-size:13px;color:#817c89;margin:0 0 12px}
+    textarea,pre{width:100%;border-radius:15px;padding:15px;font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow:auto}textarea{min-height:300px;resize:vertical}pre{min-height:220px;max-height:420px;margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}button{min-height:44px;border-radius:13px;padding:10px 15px;font-weight:850;cursor:pointer;border:1px solid transparent;transition:.16s ease}button:hover{transform:translateY(-2px);filter:brightness(1.07)}button:active{transform:scale(.985)}button.primary{background:linear-gradient(135deg,#f9f7f0,#dcd9e2);color:#111016}button.accent{background:linear-gradient(135deg,#d9393f,#ff6656);color:white;border-color:#ff776d;box-shadow:0 12px 35px rgba(255,91,84,.16)}button.secondary{background:#20202a;color:#f4eff6;border-color:#373443}
+    #analyzeBtn:before{content:"⚡ "}#tripleBtn:before{content:"🎬 "}#optimizeBtn:before{content:"✂️ "}#copyBtn:before{content:"📋 "}
+    .verdict{border-color:rgba(255,200,87,.2);overflow:hidden}.verdict-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.verdict h2{font-size:clamp(29px,5vw,44px)}.pass{color:var(--green)}.fail{color:#ff7975}.warn{color:var(--gold)}.info{color:var(--blue)}#summaryLine{margin:10px 0 0;font-size:16px;color:#e6e0e8}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.chips .pill{font-weight:800}.route{margin-top:15px;padding:11px 13px;border:1px dashed rgba(255,200,87,.28);border-radius:14px;color:#c8c0cb;font-size:13px}.route b{color:var(--gold)}
+    .advanced{margin-top:18px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:#0d0d12;overflow:hidden}.advanced summary{cursor:pointer;list-style:none;padding:16px 18px;font-weight:850;color:#e5dfe8}.advanced summary::-webkit-details-marker{display:none}.advanced summary:after{content:" +";color:var(--gold)}.advanced[open] summary:after{content:" −"}.advanced-body{padding:0 18px 18px}.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mini{padding:14px;border:1px solid #292732;border-radius:16px;background:#101016}.mini h3{margin:0 0 9px}.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}.metric{background:#0b0b10;border:1px solid #292732;border-radius:13px;padding:10px}.metric small{display:block;color:#7e7986;font-size:10px;text-transform:uppercase;letter-spacing:.07em}.metric strong{font-size:17px}.finding{border-top:1px solid #292732;padding:11px 0;line-height:1.5}.finding:first-child{border-top:0}.finding small{color:#aaa4b1}.source{font-size:12px;margin-top:5px}.source a{color:#8ebcff}.round{margin-top:10px;padding:13px;border:1px solid #2c2936;border-radius:14px;background:#0b0b10}.candidate{padding:8px 0;border-top:1px dashed #34313d}.memory-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.hidden-pre{min-height:180px;max-height:320px}
+    footer{text-align:center;color:#777280;font-size:12px;margin-top:26px}
+    @media(max-width:760px){.toolbar .pill{width:100%;justify-content:center}.actions button{flex:1 1 100%}.advanced-grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.memory-row{grid-template-columns:1fr}.hero{padding:23px 18px;border-radius:21px}.card{padding:15px;border-radius:20px}textarea{min-height:280px}h1{font-size:45px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
   </style>
 </head>
 <body>
 <main>
   <div class="filmstrip" aria-hidden="true"></div>
-
   <header class="hero">
-    <div class="eyebrow">
-      <span class="badge hot">🎬 NOW SCREENING · v0.3.1</span>
-      <span class="badge">open source</span>
-      <span class="badge">local-first</span>
-    </div>
-    <h1>Video Prompt <span class="title-accent">Director's Room</span></h1>
-    <p>Your prompt is the script. VPP is the annoyingly picky director who catches timing fights, instruction collisions and generator traps <strong>before</strong> you spend a generation credit.</p>
-    <p class="hero-joke">No popcorn was harmed during preflight. 🍿</p>
-
+    <div class="eyebrow"><span class="badge hot">🎬 NOW SCREENING · v0.3.2</span><span class="badge">open source</span><span class="badge">local-first</span></div>
+    <h1>Fix the prompt <span class="gold">before ACTION!</span></h1>
+    <p>Paste your AI-video prompt. VPP checks the stuff that usually ruins a take — timing fights, conflicting instructions, text overload and provider traps.</p>
+    <p class="joke">Basically: fewer bloopers, fewer wasted credits, happier director. 🍿</p>
     <div class="toolbar">
-      <label>🎥 Generator
-        <select id="provider">
-          <option value="generic">Generic</option>
-          <option value="veo" selected>Gemini / Veo</option>
-          <option value="runway">Runway</option>
-        </select>
-      </label>
-      <span class="pill">⚡ Fast mode · zero API calls</span>
-      <span class="pill">🎞️ Triple Verify · zero API calls</span>
+      <label>🎥 Generator <select id="provider"><option value="generic">Generic</option><option value="veo" selected>Gemini / Veo</option><option value="runway">Runway</option></select></label>
+      <span class="pill">⚡ Local check · 0 API calls</span>
     </div>
   </header>
 
-  <div class="marquee" aria-label="Capabilities">
-    <span><b>ON SET:</b></span><span>Prompt linting</span><span>•</span><span>3-round review</span><span>•</span><span>Provider knowledge</span><span>•</span><span>Failure memory</span><span>•</span><span>Local-first QA</span>
-  </div>
+  <section class="card">
+    <div class="section-title"><span class="icon">📝</span><h2>Your scene</h2></div>
+    <p class="micro">Drop the prompt here. VPP will be picky so your generator doesn't have to improvise.</p>
+    <textarea id="promptInput" spellcheck="false"></textarea>
+    <div class="actions">
+      <button class="primary" id="analyzeBtn">Quick Check</button>
+      <button class="accent" id="tripleBtn">Director's Cut ×3</button>
+      <button class="secondary" id="optimizeBtn">Fix Prompt</button>
+    </div>
+  </section>
 
-  <div class="grid">
-    <section class="card featured">
-      <div class="section-label"><span class="icon">📝</span><h2>Prompt Stage</h2></div>
-      <p class="microcopy">Paste the scene exactly as you plan to send it to the video model.</p>
-      <textarea id="promptInput" spellcheck="false" aria-label="Free-form AI video prompt"></textarea>
-      <div class="actions">
-        <button class="primary" id="analyzeBtn">Quick Check</button>
-        <button class="accent" id="tripleBtn">Director's Cut ×3</button>
-        <button class="secondary" id="optimizeBtn">Tighten Script</button>
-        <button class="secondary" id="sampleBtn">Load ver- Demo</button>
-        <button class="secondary" id="badBtn">Load a Bad Take</button>
+  <section class="card verdict">
+    <div class="section-title"><span class="icon">🚦</span><h2>Scene Verdict</h2></div>
+    <div class="verdict-top"><h2 id="status">Not analyzed</h2></div>
+    <p id="summaryLine">Run a check and the director will call it.</p>
+    <div class="chips"><strong class="pill" id="risk">Risk: —</strong><strong class="pill" id="simulation">Scene Pace: —</strong><strong class="pill" id="confidence">Confidence: —</strong></div>
+    <div class="route"><b>The whole movie:</b> Prompt → Check → Triple Verify → Green Light → Generate</div>
+  </section>
+
+  <section class="card">
+    <div class="section-title"><span class="icon">🎞️</span><h2>Final Cut Prompt</h2></div>
+    <p class="micro">This is the version to copy into your video generator.</p>
+    <pre id="compiledOutput">Analyze or verify a prompt.</pre>
+    <div class="actions"><button class="secondary" id="copyBtn">Copy & Roll</button></div>
+  </section>
+
+  <details class="advanced">
+    <summary>🎛️ Behind the camera — optional nerdy stuff</summary>
+    <div class="advanced-body">
+      <div class="metrics">
+        <div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div>
+        <div class="metric"><small>Speech</small><strong id="mSpeech">—</strong></div>
+        <div class="metric"><small>Events</small><strong id="mEvents">—</strong></div>
+        <div class="metric"><small>Text</small><strong id="mText">—</strong></div>
+        <div class="metric"><small>Timeline</small><strong id="mTimeline">—</strong></div>
       </div>
-    </section>
-
-    <section class="card featured">
-      <div class="section-label"><span class="icon">🎥</span><h2>Final Cut Prompt</h2></div>
-      <p class="microcopy">The selected prompt after preflight. Copy this version to your generator.</p>
-      <pre id="compiledOutput">Analyze or verify a prompt.</pre>
-      <div class="actions"><button class="secondary" id="copyBtn">Copy Final Prompt</button></div>
-    </section>
-  </div>
-
-  <section class="card result featured">
-    <div class="section-label"><span class="icon">🚦</span><h2>Scene Verdict</h2></div>
-    <div class="summary">
-      <h2 id="status">Waiting for the director…</h2>
-      <strong class="pill" id="risk">Prompt Risk: —</strong>
-      <strong class="pill" id="simulation">Scene Pace: —</strong>
-      <strong class="pill" id="confidence">Confidence: —</strong>
-    </div>
-    <div class="metrics">
-      <div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div>
-      <div class="metric"><small>Speech load</small><strong id="mSpeech">—</strong></div>
-      <div class="metric"><small>Events</small><strong id="mEvents">—</strong></div>
-      <div class="metric"><small>Screen text</small><strong id="mText">—</strong></div>
-      <div class="metric"><small>Timeline</small><strong id="mTimeline">—</strong></div>
-    </div>
-    <div id="findings"></div>
-  </section>
-
-  <section class="card result" id="roundsCard">
-    <div class="section-label"><span class="icon">🎞️</span><h2>Review Room · 3 Rounds</h2></div>
-    <p class="microcopy">Candidate comparison, failure prediction, then an independent gatekeeper.</p>
-    <div id="rounds"><p>Press <strong>Director's Cut ×3</strong> to start the review room.</p></div>
-  </section>
-
-  <div class="two">
-    <section class="card">
-      <div class="section-label"><span class="icon">🧪</span><h2>Scene X-Ray</h2></div>
-      <p class="microcopy">The structured Scene Spec extracted from your prompt.</p>
-      <pre class="small" id="sceneOutput"></pre>
-    </section>
-    <section class="card">
-      <div class="section-label"><span class="icon">🧠</span><h2>Knowledge Engine</h2></div>
-      <p>Evidence packs currently cover official Veo guidance, official Runway prompting guidance, plus research taxonomies from VBench, T2V-CompBench and EvalCrafter. The rules stay lightweight and run locally.</p>
-      <div class="knowledge-tags">
-        <code>provider fit</code><code>timing</code><code>negative phrasing</code><code>multilingual audio</code><code>temporal consistency</code><code>compositional complexity</code>
+      <div class="advanced-grid">
+        <section class="mini"><h3>🧠 Findings</h3><div id="findings"></div></section>
+        <section class="mini"><h3>🎬 Three review rounds</h3><div id="rounds"><p>Run Director's Cut ×3 to see the review room.</p></div></section>
+        <section class="mini"><h3>🩻 Scene X-Ray</h3><pre class="hidden-pre" id="sceneOutput"></pre></section>
+        <section class="mini"><h3>🍿 Demo buttons</h3><div class="actions"><button class="secondary" id="sampleBtn">Load good take</button><button class="secondary" id="badBtn">Load blooper</button></div></section>
       </div>
-    </section>
-  </div>
-
-  <section class="card result">
-    <div class="section-label"><span class="icon">💥</span><h2>Bloopers Memory</h2></div>
-    <p>Save a real generator failure locally. Each bad take becomes a regression reminder, without uploading the video or prompt.</p>
-    <div class="memory-row">
-      <input id="failureCategory" placeholder="category · e.g. exact_text" />
-      <input id="failureObserved" placeholder="what went wrong" />
-      <input id="failureExpected" placeholder="what should happen" />
-      <button class="secondary" id="saveFailureBtn">Save Blooper</button>
+      <section class="mini" style="margin-top:14px"><h3>💥 Bloopers Memory</h3><p class="micro">Teach VPP from a real generator mistake. Saved only in this browser.</p><div class="memory-row"><input id="failureCategory" placeholder="category"/><input id="failureObserved" placeholder="what went wrong"/><input id="failureExpected" placeholder="what should happen"/><button class="secondary" id="saveFailureBtn">Save blooper</button></div><div id="failureList"></div></section>
     </div>
-    <div id="failureList"></div>
-  </section>
+  </details>
 
-  <footer>🎬 VPP reduces preventable failures and reports evidence-backed risks. Its confidence band is a preflight heuristic, not a guarantee that a stochastic video generator will behave perfectly.</footer>
+  <footer>VPP catches preventable prompt failures. It cannot promise a stochastic video model won't decide to become an auteur. 🎭</footer>
 </main>
-<script src="core.js"></script>
-<script src="triple.js"></script>
-<script src="ui.js"></script>
+<script src="core.js"></script><script src="triple.js"></script><script src="ui.js"></script>
 </body>
 </html>
