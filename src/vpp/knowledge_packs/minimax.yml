@@ -1,0 +1,22 @@
+provider: minimax
+name: MiniMax / Hailuo Video
+evidence_tier: A
+rules:
+  - id: minimax.camera_commands
+    title: MiniMax supports explicit bracketed camera commands
+    trigger: minimax_camera_without_command
+    severity: info
+    points: 0
+    recommendation: For Director/Hailuo models, consider compiling camera intent into supported commands such as [Static shot], [Push in], [Pan left] or [Tracking shot].
+    sources:
+      - name: MiniMax API — Text-to-Video
+        url: https://platform.minimax.io/docs/api-reference/video-generation-t2v
+  - id: minimax.camera_stack
+    title: MiniMax recommends limiting combined camera commands
+    trigger: camera_motion_overload
+    severity: warning
+    points: 8
+    recommendation: Keep simultaneous camera commands to three or fewer and prefer ordered movements when the shot needs several moves.
+    sources:
+      - name: MiniMax API — First & Last Frame Video
+        url: https://platform.minimax.io/docs/api-reference/video-generation-fl2v
