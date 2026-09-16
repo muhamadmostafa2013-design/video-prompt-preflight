@@ -1,5 +1,24 @@
 from __future__ import annotations
 
+import re
+
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\s+(.+?)\s+(?:into|to)\s+([^;]+)(.*)$", re.I)
+
+
+def _safe_text_action(action: str) -> str:
+    original = str(action or "").strip()
+    match = _MORPH_RE.search(original)
+    if not match:
+        return original
+    before = match.group(1).strip()
+    after = match.group(2).strip()
+    tail = (match.group(3) or "").lstrip("; ").strip()
+    safe = (
+        f"show {before} as static text, hold clearly, hard cut, then show {after} as static text; "
+        "do not morph, scramble, interpolate or animate letters"
+    )
+    return f"{safe}; {tail}" if tail else safe
+
 
 def compile_scene(scene: dict) -> str:
     """Compile a structured scene into a compact, generator-friendly prompt."""
@@ -29,6 +48,12 @@ def compile_scene(scene: dict) -> str:
         lines.append("EXACT SCREEN TEXT ONLY: " + " | ".join(map(str, screen_text)))
     if scene.get("text_whitelist"):
         lines.append("TEXT WHITELIST IS STRICT; render no other words or subtitles.")
+    if screen_text:
+        lines.append(
+            "TEXT SAFETY: each exact string is a separate static state; use clean cuts between states; "
+            "never morph, interpolate, scramble or animate letters. If exact spelling cannot be rendered reliably, "
+            "leave the text area blank for post-production overlay."
+        )
 
     if timeline:
         parts = []
@@ -36,7 +61,10 @@ def compile_scene(scene: dict) -> str:
         for event in timeline:
             seconds = float(event.get("seconds", 0))
             start, end = cursor, cursor + seconds
-            parts.append(f"{start:g}-{end:g}s {event.get('action', '').strip()}")
+            action = str(event.get("action", "")).strip()
+            if screen_text:
+                action = _safe_text_action(action)
+            parts.append(f"{start:g}-{end:g}s {action}")
             cursor = end
         lines.append("TIMELINE: " + "; ".join(parts))
 
