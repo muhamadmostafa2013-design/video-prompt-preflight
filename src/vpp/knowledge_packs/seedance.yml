@@ -1,0 +1,22 @@
+provider: seedance
+name: ByteDance Seedance
+evidence_tier: A
+rules:
+  - id: seedance.multishot_native
+    title: Seedance natively supports multi-shot storytelling
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Keep shot transitions explicit and preserve subject/style anchors; do not apply a universal one-shot-only rule to Seedance.
+    sources:
+      - name: ByteDance Seed — Seedance
+        url: https://seed.bytedance.com/en/seedance
+  - id: seedance.complex_motion
+    title: Complex motion is supported, but prompt intent should remain explicit
+    trigger: action_density_high
+    severity: info
+    points: 0
+    recommendation: Use clear natural-language action order and camera intent instead of reducing every Seedance sequence to one action by default.
+    sources:
+      - name: ByteDance Seed — Seedance
+        url: https://seed.bytedance.com/en/seedance
