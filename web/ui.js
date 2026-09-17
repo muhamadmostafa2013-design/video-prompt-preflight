@@ -49,15 +49,20 @@ const providerOptions=[
   ["veo","Google Veo 3.1 · Flow/API"],
   ["runway","Runway Gen-4.5"],
   ["firefly","Adobe Firefly Video"],
-  ["luma","Luma Dream Machine"],
-  ["kling","Kling AI"],
+  ["luma","Luma Ray 3.2"],
+  ["kling","Kling VIDEO 3.0"],
   ["wan","Alibaba Wan"],
-  ["pixverse","PixVerse"],
+  ["pixverse","PixVerse 5.6"],
   ["minimax","MiniMax / Hailuo"],
   ["higgsfield","Higgsfield"],
-  ["pika","Pika"],
-  ["seedance","ByteDance Seedance"],
-  ["midjourney","Midjourney Video"]
+  ["pika","Pika 2.5"],
+  ["seedance","ByteDance Seedance 2.5"],
+  ["midjourney","Midjourney Video"],
+  ["grok","Grok Imagine Video 1.5"],
+  ["vidu","Vidu Q3"],
+  ["dreamina","Dreamina / CapCut AI Video"],
+  ["canva","Canva AI Video"],
+  ["sora_legacy","Sora 2 API · legacy/sunset"]
 ];
 
 function setupProviders(){
@@ -66,14 +71,22 @@ function setupProviders(){
   select.value="gemini_omni";
 }
 
-const constitutionReady=new Promise(resolve=>{
-  if(A.constitutionReview){resolve();return;}
-  const script=document.createElement("script");
-  script.src="constitution.js";
-  script.onload=resolve;
-  script.onerror=()=>resolve();
-  document.head.appendChild(script);
-});
+function loadScript(src){
+  return new Promise(resolve=>{
+    const existing=[...document.scripts].some(s=>s.src&&s.src.endsWith(src));
+    if(existing){resolve();return;}
+    const script=document.createElement("script");
+    script.src=src;
+    script.onload=resolve;
+    script.onerror=()=>resolve();
+    document.head.appendChild(script);
+  });
+}
+
+const constitutionReady=(async()=>{
+  if(!A.constitutionReview) await loadScript("constitution.js");
+  await loadScript("constitution-extra.js");
+})();
 
 function failures(){
   try{return JSON.parse(localStorage.getItem("vpp_failures")||"[]")}
@@ -112,8 +125,8 @@ function verdictCopy(passed,fs,triple=false){
   const warns=fs.filter(f=>f.severity==='warning').length;
   const morph=fs.some(f=>/morph|text_transition/.test(f.rule_id));
   if(morph)return "The spelling is fine on paper, but the text transition is asking for trouble. Use static states + hard cuts. 🔤✂️";
-  if(passed&&triple)return "Three passes, no blocking issues. The crew can stop arguing now. 🎬";
-  if(passed&&warns)return `Shootable, with ${warns} director note${warns>1?'s':''}. Nothing dramatic — yet. 🍿`;
+  if(passed&&triple&&warns===0)return "Three passes, no blocking issues. The crew can stop arguing now. 🎬";
+  if(passed&&warns)return `Shootable, with ${warns} evidence-backed director note${warns>1?'s':''}. 🍿`;
   if(passed)return "Looks shoot-ready. No preventable prompt bloopers found. 🍿";
   return `${errors||fs.length} blocking issue${(errors||fs.length)!==1?'s':''} found. One more take before you spend a credit. ✋`;
 }
@@ -138,9 +151,35 @@ function fast(opt=false){
   roundsEl.innerHTML="<p>Quick Check finished. Press <strong>Director's Cut ×3</strong> for provider-specific, evidence-backed review.</p>";
 }
 
+function mergeConstitution(res,provider){
+  if(typeof A.constitutionReview!=="function") return res;
+  const extra=A.constitutionReview(input.value,res.scene,provider)||[];
+  const existing=new Set((res.findings||[]).map(f=>`${f.rule_id}|${f.provider_scope||''}`));
+  const added=extra.filter(f=>!existing.has(`${f.rule_id}|${f.provider_scope||''}`));
+  if(!added.length)return res;
+
+  res.findings=[...(res.findings||[]),...added];
+  if(res.rounds?.[1]) res.rounds[1].findings=[...(res.rounds[1].findings||[]),...added];
+
+  const penalty=added.reduce((sum,f)=>sum+Number(f.points||0),0);
+  res.score=Math.max(0,Number(res.score||0)-penalty);
+  if(added.some(f=>f.severity==="error")){
+    res.passed=false;
+    res.confidence="low";
+    if(res.rounds?.[2]){res.rounds[2].passed=false;res.rounds[2].score=res.score;res.rounds[2].confidence="low";}
+  }else if(added.some(f=>f.severity==="warning")&&res.confidence==="high"){
+    res.confidence="medium";
+    if(res.rounds?.[2]){res.rounds[2].score=res.score;res.rounds[2].confidence="medium";}
+  }else if(res.rounds?.[2]) res.rounds[2].score=res.score;
+  return res;
+}
+
 async function triple(){
   await constitutionReady;
-  const res=A.tripleReview(input.value,$("provider").value,failures());
+  const provider=$("provider").value;
+  let res=A.tripleReview(input.value,provider,failures());
+  res=mergeConstitution(res,provider);
+
   $("status").textContent=res.passed?"GREEN LIGHT · 3× VERIFIED 🎬":"CUT! GATE BLOCKED ✋";
   $("status").className=res.passed?"pass":"fail";
   $("risk").textContent=`Review Score: ${res.score}/100`;
