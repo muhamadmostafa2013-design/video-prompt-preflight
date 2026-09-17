@@ -1,0 +1,22 @@
+provider: grok
+name: Grok Imagine Video 1.5
+evidence_tier: A
+rules:
+  - id: grok.core_brief
+    title: Grok Imagine prompts should clearly define scene, motion, camera and mood
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Structure the creative brief around subject/scene, action, camera movement or angle, pacing and visual mood; avoid making the model infer all of these at once.
+    sources:
+      - name: xAI — Create Short Videos From Prompts
+        url: https://x.ai/grok/use-cases/video-generation
+  - id: grok.native_audio
+    title: Grok Imagine Video 1.5 generates audio and speech in the same pass
+    trigger: multi_speaker_dialogue
+    severity: info
+    points: 0
+    recommendation: Make speaker ownership and desired ambience/SFX explicit when dialogue accuracy matters, then verify lip-sync in output QA.
+    sources:
+      - name: xAI — Grok Imagine Video 1.5
+        url: https://x.ai/news/grok-imagine-video-1-5
