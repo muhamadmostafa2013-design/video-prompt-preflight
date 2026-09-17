@@ -1,0 +1,23 @@
+provider: sora_legacy
+name: OpenAI Sora 2 API — legacy / sunset
+evidence_tier: A
+status: deprecated
+rules:
+  - id: sora.product_discontinued
+    title: The Sora consumer product is no longer available
+    trigger: always_info
+    severity: warning
+    points: 0
+    recommendation: Do not build new VPP product workflows around the discontinued Sora consumer product.
+    sources:
+      - name: OpenAI — Sora 2
+        url: https://openai.com/index/sora-2/
+  - id: sora.api_sunset
+    title: The Sora API is scheduled to shut down on September 24, 2026
+    trigger: always_info
+    severity: warning
+    points: 0
+    recommendation: Treat Sora 2 API support as a migration-only legacy profile and choose another active video provider for new workflows.
+    sources:
+      - name: OpenAI API — Create a video
+        url: https://developers.openai.com/api/reference/typescript/resources/videos/methods/create
