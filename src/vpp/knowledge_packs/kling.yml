@@ -1,22 +1,40 @@
 provider: kling
-name: Kling AI Video
+name: Kling VIDEO 3.0 / 3.0 Omni
 evidence_tier: A
 rules:
+  - id: kling.multishot_native
+    title: Kling VIDEO 3.0 supports native and custom multi-shot storytelling
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Do not force a one-shot-only rule. When Multi-Shot is enabled, describe each shot clearly or use Custom Multi-Shot for explicit shot durations and coverage.
+    sources:
+      - name: Kling AI — VIDEO 3.0 Model User Guide
+        url: https://kling.ai/quickstart/klingai-video-3-model-user-guide
+  - id: kling.references_for_consistency
+    title: Kling 3.0 supports start/end frames and element references for continuity
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Anchor important recurring characters, products or props with supported image/video references instead of relying on prose repetition alone.
+    sources:
+      - name: Kling AI — VIDEO 3.0 Omni Model User Guide
+        url: https://kling.ai/quickstart/klingai-video-3-omni-model-user-guide
   - id: kling.short_motion_budget
-    title: Movement and scene complexity should fit the short clip duration
+    title: Motion complexity still has to fit the selected duration
     trigger: short_duration_complex_motion
     severity: warning
-    points: 10
-    recommendation: Simplify subject movement and scene changes; Kling's guide recommends straightforward movement that fits the clip.
-    sources:
-      - name: Kling AI — Text-to-Video Prompt Guide
-        url: https://kling.ai/quickstart/text-to-video-prompt-guide
-  - id: kling.camera_stack
-    title: Keep camera language distinct from subject movement
-    trigger: camera_motion_overload
-    severity: warning
     points: 8
-    recommendation: Separate subject movement from camera language and reduce simultaneous camera instructions.
+    recommendation: If a short single shot contains many independent actions, simplify it or switch to Kling's Multi-Shot workflow rather than forcing everything into one continuous take.
     sources:
-      - name: Kling AI — Text-to-Video Prompt Guide
-        url: https://kling.ai/quickstart/text-to-video-prompt-guide
+      - name: Kling AI — VIDEO 3.0 Model User Guide
+        url: https://kling.ai/quickstart/klingai-video-3-model-user-guide
+  - id: kling.dialogue_labels
+    title: Character-labelled dialogue improves multi-speaker assignment
+    trigger: multi_speaker_dialogue
+    severity: info
+    points: 0
+    recommendation: Pair every spoken line with an explicit character label. VIDEO 3.0 specifically supports stronger multi-character coreference and native audio.
+    sources:
+      - name: Kling AI — VIDEO 3.0 Model User Guide
+        url: https://kling.ai/quickstart/klingai-video-3-model-user-guide
