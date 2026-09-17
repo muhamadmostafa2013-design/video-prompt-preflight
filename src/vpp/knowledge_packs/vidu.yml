@@ -1,0 +1,31 @@
+provider: vidu
+name: Vidu Q3 Pro / Turbo
+evidence_tier: A
+rules:
+  - id: vidu.duration_and_seed
+    title: Vidu Q3 exposes explicit duration and seed controls
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Treat duration and seed as generator settings rather than burying them in prose when using the API. Reuse a seed only as an experiment control, not as a guarantee of identical output.
+    sources:
+      - name: Vidu Platform — Text to Video API
+        url: https://platform.vidu.com/docs/text-to-video
+  - id: vidu.i2v_anchor
+    title: Image-to-video uses the image as the start frame
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Let the start image anchor appearance and use the prompt for intended motion, camera behavior and audio/narrative changes.
+    sources:
+      - name: Vidu Platform — Image to Video API
+        url: https://platform.vidu.com/docs/image-to-video
+  - id: vidu.multishot_capability
+    title: Vidu Q3 Pro supports shot segmentation and audio-visual synchronization
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Use explicit shot order and speaker/audio ownership when requesting a storyboard-like sequence instead of flattening the entire story into one paragraph.
+    sources:
+      - name: Vidu Platform — Text to Video API
+        url: https://platform.vidu.com/docs/text-to-video
