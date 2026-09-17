@@ -15,6 +15,28 @@ from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
 from .triple_review import triple_review
 
+PROVIDERS = [
+    "generic",
+    "gemini_omni",
+    "veo",
+    "runway",
+    "firefly",
+    "luma",
+    "kling",
+    "wan",
+    "pixverse",
+    "minimax",
+    "higgsfield",
+    "pika",
+    "seedance",
+    "midjourney",
+    "grok",
+    "vidu",
+    "dreamina",
+    "canva",
+    "sora_legacy",
+]
+
 
 def _read_text(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
@@ -99,7 +121,9 @@ def cmd_triple_review(args: argparse.Namespace) -> int:
         for rnd in result["rounds"]:
             print(f"ROUND {rnd['round']} — {rnd['name']}")
             for f in rnd.get("findings", []):
-                print(f"  [{f['severity'].upper()}] {f['agent']} · {f['rule_id']}: {f['message']}")
+                tier = f.get("evidence_tier")
+                tier_text = f" · tier={tier}" if tier else ""
+                print(f"  [{f['severity'].upper()}] {f['agent']} · {f['rule_id']}{tier_text}: {f['message']}")
             if rnd.get("winner"):
                 print(f"  winner: {rnd['winner']}")
         print("\nFINAL PROMPT\n------------")
@@ -154,7 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     triple = sub.add_parser("triple-review", help="Run 3-round local multi-agent preflight")
     triple.add_argument("file")
-    triple.add_argument("--provider", choices=["generic", "veo", "runway"], default="generic")
+    triple.add_argument("--provider", choices=PROVIDERS, default="generic")
     triple.add_argument("--json", action="store_true")
     triple.set_defaults(func=cmd_triple_review)
 
