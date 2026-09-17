@@ -1,0 +1,42 @@
+provider: gemini_omni
+name: Gemini Apps / Gemini Omni
+evidence_tier: A
+rules:
+  - id: gemini_omni.current_product_model
+    title: Gemini Apps video generation currently uses Gemini Omni, not the Veo API profile
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Use the Gemini Omni profile for prompts generated inside Gemini Apps; use the Veo profile for Veo 3.1 in Flow/API/Vertex workflows.
+    sources:
+      - name: Google Gemini Apps Help — Generate videos with Gemini Apps
+        url: https://support.google.com/gemini/answer/16126339
+  - id: gemini_omni.reference_inputs
+    title: Gemini Omni can use text, image and video references and supports multi-turn editing
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: When identity, composition or a visual object must persist, provide a clean reference instead of describing it repeatedly in prose; use follow-up edits for local changes rather than regenerating the whole concept.
+    sources:
+      - name: Google Gemini Apps Help — Generate and edit videos
+        url: https://support.google.com/gemini/answer/16126339
+  - id: gemini_omni.multispeaker_dialogue_empirical
+    title: Community testing still reports speaker swaps in complex multi-person dialogue
+    trigger: multi_speaker_dialogue
+    severity: warning
+    points: 6
+    evidence_tier: C
+    recommendation: For correctness-critical dialogue, prefer one active speaker per shot or split lines into separate clips and stitch them in editing.
+    sources:
+      - name: Reddit r/VEO3 — multi-character dialogue failure reports
+        url: https://www.reddit.com/r/VEO3/comments/1tptw4v/how_to_handle_multiple_characters_dialogue/
+  - id: gemini_omni.structured_audio_empirical
+    title: Community workflows often separate Dialogue, SFX and Ambient layers for clearer synced-audio intent
+    trigger: always_info
+    severity: info
+    points: 0
+    evidence_tier: C
+    recommendation: When native audio matters, separate spoken lines from sound effects and ambient sound instead of mixing them into one sentence.
+    sources:
+      - name: Reddit r/GeminiAI — Gemini Omni prompt structure from repeated testing
+        url: https://www.reddit.com/r/GeminiAI/comments/1tzu0uo/after_a_lot_of_trial_and_error_with_gemini_omni/
