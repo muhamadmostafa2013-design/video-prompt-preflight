@@ -1,22 +1,40 @@
 provider: luma
-name: Luma Dream Machine / Ray
+name: Luma Ray 3.2
 evidence_tier: A
 rules:
-  - id: luma.camera_stack
-    title: Keep camera direction focused and visible
-    trigger: camera_motion_overload
-    severity: warning
-    points: 8
-    recommendation: Use one clear camera move or an intentionally ordered sequence; describe visible subject behavior rather than vague emotion.
+  - id: luma.current_model
+    title: Ray 3.2 is Luma's current public video model
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Compile new Luma workflows against Ray 3.2 rather than legacy Ray2/Ray3 variants.
     sources:
-      - name: Luma — How to Generate with Ray2
-        url: https://lumalabs.ai/learning-hub/dream-machine-how-to-generate-with-ray2
-  - id: luma.image_video_motion
-    title: Use references/keyframes for visual control and prompt the motion
+      - name: Luma — Official Information for AI Assistants
+        url: https://lumalabs.ai/llm-info
+  - id: luma.keyframes_for_control
+    title: Ray 3.2 supports start/end frames and multi-keyframe anchoring
     trigger: image_to_video_prompt
     severity: info
     points: 0
-    recommendation: Let references/keyframes anchor appearance, then describe action, camera and timing in direct natural language.
+    recommendation: When exact visual states or continuity matter, anchor them with start/end frames or multi-keyframes instead of expanding the prose prompt.
     sources:
-      - name: Luma — Dream Machine Best Practices
-        url: https://lumalabs.ai/learning-hub/best-practices
+      - name: Luma Agents — Ray 3.2 models and video controls
+        url: https://docs.agents.lumalabs.ai/guides/model
+  - id: luma.reference_drift
+    title: Establish master references before iterative branching
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Define non-negotiable character, product, brand and lighting references before generating variants; iteration without anchoring can drift.
+    sources:
+      - name: Luma — How To Use References Properly
+        url: https://lumalabs.ai/learning-center/articles/how-to-use-references-properly
+  - id: luma.camera_stack
+    title: Keep camera direction intentional even when using frame-level controls
+    trigger: camera_motion_overload
+    severity: warning
+    points: 8
+    recommendation: Prefer a motivated camera path or explicit keyframe plan over several competing camera cues in one short beat.
+    sources:
+      - name: Luma — Introducing Ray 3.2
+        url: https://lumalabs.ai/news/introducing-ray-3-2
