@@ -43,15 +43,54 @@ const $=id=>document.getElementById(id),
   roundsEl=$("rounds"),
   summaryEl=$("summaryLine");
 
+const providerOptions=[
+  ["generic","Generic / cross-platform"],
+  ["gemini_omni","Gemini Apps · Omni"],
+  ["veo","Google Veo 3.1 · Flow/API"],
+  ["runway","Runway Gen-4.5"],
+  ["firefly","Adobe Firefly Video"],
+  ["luma","Luma Dream Machine"],
+  ["kling","Kling AI"],
+  ["wan","Alibaba Wan"],
+  ["pixverse","PixVerse"],
+  ["minimax","MiniMax / Hailuo"],
+  ["higgsfield","Higgsfield"],
+  ["pika","Pika"],
+  ["seedance","ByteDance Seedance"],
+  ["midjourney","Midjourney Video"]
+];
+
+function setupProviders(){
+  const select=$("provider");
+  select.innerHTML=providerOptions.map(([value,label])=>`<option value="${value}">${label}</option>`).join("");
+  select.value="gemini_omni";
+}
+
+const constitutionReady=new Promise(resolve=>{
+  if(A.constitutionReview){resolve();return;}
+  const script=document.createElement("script");
+  script.src="constitution.js";
+  script.onload=resolve;
+  script.onerror=()=>resolve();
+  document.head.appendChild(script);
+});
+
 function failures(){
   try{return JSON.parse(localStorage.getItem("vpp_failures")||"[]")}
   catch{return[]}
 }
 
+function tierLabel(f){
+  const tier=f.evidence_tier;
+  if(!tier)return "";
+  const labels={A:"Official",B:"Cross-platform / regression",C:"Community empirical",D:"Hypothesis"};
+  return ` · ${labels[tier]||tier}`;
+}
+
 function drawFindings(fs){
   findingsEl.innerHTML=fs.map(f=>
     `<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}">
-      <strong>${f.severity.toUpperCase()} · ${f.agent||'Verifier'} · ${f.rule_id}</strong><br>
+      <strong>${f.severity.toUpperCase()} · ${f.agent||'Verifier'} · ${f.rule_id}${tierLabel(f)}</strong><br>
       ${f.message}
       ${f.recommendation?`<br><small>Director note → ${f.recommendation}</small>`:''}
       ${(f.sources||[]).map(s=>`<div class="source">Evidence: <a href="${s.url}" target="_blank" rel="noreferrer">${s.name}</a></div>`).join("")}
@@ -96,10 +135,11 @@ function fast(opt=false){
   drawFindings(fs);
   sceneEl.textContent=JSON.stringify(scene,null,2);
   compiledEl.textContent=opt||passed?A.compile(scene):"Blocking errors found. Fix the take or run Director's Cut ×3.";
-  roundsEl.innerHTML="<p>Quick Check finished. Press <strong>Director's Cut ×3</strong> for candidate comparison and evidence-backed review.</p>";
+  roundsEl.innerHTML="<p>Quick Check finished. Press <strong>Director's Cut ×3</strong> for provider-specific, evidence-backed review.</p>";
 }
 
-function triple(){
+async function triple(){
+  await constitutionReady;
   const res=A.tripleReview(input.value,$("provider").value,failures());
   $("status").textContent=res.passed?"GREEN LIGHT · 3× VERIFIED 🎬":"CUT! GATE BLOCKED ✋";
   $("status").className=res.passed?"pass":"fail";
@@ -116,7 +156,7 @@ function triple(){
       <h3>Round ${r.round} · ${r.name}</h3>
       ${r.winner?`<p class="pass">Director pick: <strong>${r.winner}</strong></p>`:""}
       ${(r.candidates||[]).map(c=>`<div class="candidate"><strong>${c.name}</strong> · score ${c.score} · ~${c.tok} tokens · constraints ${c.coverage}%</div>`).join("")}
-      ${(r.findings||[]).map(f=>`<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}"><strong>${f.agent} · ${f.rule_id}</strong><br>${f.message}</div>`).join("")}
+      ${(r.findings||[]).map(f=>`<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}"><strong>${f.agent} · ${f.rule_id}${tierLabel(f)}</strong><br>${f.message}</div>`).join("")}
       ${r.passed!==undefined?`<p class="${r.passed?'pass':'fail'}"><strong>${r.passed?'GATE PASS · SHOOT IT':'GATE FAIL · ONE MORE TAKE'}</strong> · score ${r.score}/100 · confidence ${r.confidence}</p>`:""}
     </div>`
   ).join("");
@@ -153,6 +193,7 @@ $("saveFailureBtn").onclick=()=>{
   drawMemory();
 };
 
+setupProviders();
 $("analyzeBtn").onclick=()=>fast(false);
 $("optimizeBtn").onclick=()=>fast(true);
 $("tripleBtn").onclick=triple;
