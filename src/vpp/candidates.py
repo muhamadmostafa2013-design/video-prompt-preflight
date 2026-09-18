@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, asdict
 
-from .compiler import compile_scene
+from .compiler import compile_scene, _safe_text_action
 
 
 @dataclass
@@ -32,6 +32,8 @@ def _contract(scene: dict) -> list[str]:
     lines = ["OUTPUT CONTRACT:"]
     if scene.get("text_whitelist"):
         lines.append("Visible text is restricted to the exact whitelist above; render no additional words or subtitles.")
+    if scene.get("screen_text"):
+        lines.append("Treat each exact string as a separate static state; use hard cuts between states and never morph or scramble letters.")
     if rules.get("no_arabic_on_screen"):
         lines.append("Arabic is audio-only; Arabic writing is added later in editing.")
     if rules.get("no_auto_subtitles"):
@@ -45,6 +47,17 @@ def _contract(scene: dict) -> list[str]:
     return lines if len(lines) > 1 else []
 
 
+def _safe_events(scene: dict) -> list[dict]:
+    screen_text = scene.get("screen_text", []) or []
+    out = []
+    for event in scene.get("timeline", []) or []:
+        action = str(event.get("action", ""))
+        if screen_text:
+            action = _safe_text_action(action)
+        out.append({**event, "action": action})
+    return out
+
+
 def _minimal(scene: dict) -> str:
     parts = [f"{scene.get('aspect_ratio', '9:16')} video, exactly {scene.get('duration_seconds', 10)}s."]
     if scene.get("style"):
@@ -54,8 +67,9 @@ def _minimal(scene: dict) -> str:
         parts.append(f'Arabic dialogue: "{spoken}"')
     if scene.get("screen_text"):
         parts.append("Exact screen text: " + " | ".join(map(str, scene["screen_text"])) + ".")
-    if scene.get("timeline"):
-        parts.append("Ordered beats: " + "; ".join(str(e.get("action", "")) for e in scene["timeline"]) + ".")
+    events = _safe_events(scene)
+    if events:
+        parts.append("Ordered beats: " + "; ".join(str(e.get("action", "")) for e in events) + ".")
     parts.extend(_contract(scene))
     return "\n".join(parts)
 
@@ -65,7 +79,7 @@ def _timeline_first(scene: dict) -> str:
     if scene.get("style"):
         lines.append("Style: " + "; ".join(map(str, scene["style"])) + ".")
     cursor = 0.0
-    for e in scene.get("timeline", []) or []:
+    for e in _safe_events(scene):
         sec = float(e.get("seconds", 0) or 0)
         lines.append(f"{cursor:g}-{cursor+sec:g}s: {e.get('action', '').strip()}")
         cursor += sec
@@ -116,5 +130,10 @@ def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
             score += 5
         if name.startswith("A") and (scene.get("rules") or {}).get("no_arabic_on_screen"):
             score += 4
+        if name.startswith("A") and any(
+            re.search(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", str(e.get("action", "")), re.I)
+            for e in scene.get("timeline", []) or [] if isinstance(e, dict)
+        ):
+            score += 10
         out.append(Candidate(name, prompt, tok, neg, coverage, round(score, 2)))
     return sorted(out, key=lambda c: c.score, reverse=True)

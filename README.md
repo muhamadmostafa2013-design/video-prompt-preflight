@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.3 keeps the deterministic v0.2 core and adds provider/research knowledge packs, three conservative prompt candidates, a three-round local review, an independent gatekeeper, and failure-memory matching.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.4 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.3: fast mode or Triple Verify
+## v0.4: local Triple Verify + optional Jev judge
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -23,7 +23,7 @@ Triple Verify uses three local rounds:
 2. **Failure prediction + evidence + memory** — provider guidance, research taxonomies, red-team checks and prior failures.
 3. **Independent gatekeeper** — blocks hard errors, timing overflow and any candidate that drops required constraints.
 
-The browser UI exposes the same flow without a backend. See `docs/AGENT_FACTORY.md`.
+The browser UI keeps the local zero-API flow. Jev is opt-in through the CLI or a future secure backend; see `docs/JEV_INTEGRATION.md`.
 
 ## Scene Spec
 
@@ -106,6 +106,7 @@ vpp import-prompt <prompt.txt> -o scene.yml
 vpp lint-prompt <prompt.txt>
 vpp optimize <prompt.txt> -o optimized.txt --spec scene.yml
 vpp triple-review <prompt.txt> --provider veo
+vpp jev-review <prompt.txt> --provider veo
 ```
 
 ## Regression-first workflow
@@ -157,9 +158,8 @@ Free-form Prompt
 
 ## Roadmap
 
-- **v0.3 (current):** provider/research knowledge packs, A/B/C prompt comparison, triple local review, independent gatekeeper, failure memory.
-- **v0.4:** post-generation frame/audio QA, exact-text verification, VBench/VideoScore adapters, richer failure-memory dashboard.
-- **v0.5:** optional Promptfoo/DSPy/local-model semantic agents behind explicit adapters and token budgets.
+- **v0.4 (current):** multi-provider constitution, A/B/C local review, Output QA, exact-text regression protection, optional Jev candidate judge + semantic gate.
+- **v0.5:** secure web judge proxy, deeper post-generation audio/visual QA, Promptfoo/DSPy/local-model adapters and explicit token budgets.
 
 ## License
 

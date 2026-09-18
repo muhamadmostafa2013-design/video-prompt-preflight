@@ -1,0 +1,56 @@
+provider: generic
+name: VPP Video Constitution
+evidence_tier: B
+rules:
+  - id: constitution.exact_text_is_production_data
+    title: Exact on-screen text needs deterministic QA
+    trigger: exact_text_present
+    severity: info
+    points: 0
+    recommendation: Treat required spelling as production data. Prefer static states, a supplied text image/reference, or a post-production overlay for critical typography.
+    evidence_tier: B
+    provider_scope: cross-platform
+    sources:
+      - name: Pika 2.5 — precise on-screen text is not a target use case
+        url: https://mcp.pika.art/models/pika/pika-2.5/text-to-video
+      - name: VPP real-world exact-text morph regression
+        url: https://github.com/muhamadmostafa2013-design/video-prompt-preflight/blob/main/failures/0003_exact_text_morph_corruption.json
+  - id: constitution.camera_motion_budget
+    title: Too many independent camera moves can compete for a short shot
+    trigger: camera_motion_overload
+    severity: warning
+    points: 8
+    recommendation: Keep one motivated camera move when possible; sequence additional moves only when the selected provider explicitly supports choreography.
+    evidence_tier: B
+    provider_scope: cross-platform
+    sources:
+      - name: Runway Image-to-Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/48324313115155-Image-to-Video-Prompting-Guide
+      - name: Google Veo 3.1 Prompting Guide
+        url: https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-veo-3-1
+  - id: constitution.short_scene_action_budget
+    title: The requested action load is high for the available duration
+    trigger: action_density_high
+    severity: warning
+    points: 8
+    recommendation: Keep the clip focused on one primary beat or use an ordered provider-supported sequence with enough duration.
+    evidence_tier: B
+    provider_scope: cross-platform
+    sources:
+      - name: Kling Text-to-Video Prompt Guide
+        url: https://kling.ai/quickstart/text-to-video-prompt-guide
+      - name: Runway Gen-4 Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/39789879462419-Gen-4-Video-Prompting-Guide
+  - id: constitution.image_to_video_motion_focus
+    title: Image-to-video prompts should prioritize motion and temporal direction
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Let the input image carry appearance/composition/style; spend prompt budget on subject motion, environment motion, camera and timing unless you are intentionally changing the image.
+    evidence_tier: B
+    provider_scope: cross-platform
+    sources:
+      - name: Runway Image-to-Video Prompting Guide
+        url: https://help.runwayml.com/hc/en-us/articles/48324313115155-Image-to-Video-Prompting-Guide
+      - name: Alibaba Wan Video Prompt Guide
+        url: https://www.alibabacloud.com/help/en/model-studio/text-to-video-prompt

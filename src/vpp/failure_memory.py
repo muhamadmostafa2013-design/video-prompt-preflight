@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 FAILURES_DIR = ROOT / "failures"
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
 
 
 def load_failure_memory() -> list[dict]:
@@ -20,9 +22,9 @@ def load_failure_memory() -> list[dict]:
 
 
 def match_failures(scene: dict, provider: str = "generic") -> list[dict]:
-    rules = scene.get("rules", {}) or {}
     screen = scene.get("screen_text", []) or []
     spoken = scene.get("spoken", {}) or {}
+    timeline = scene.get("timeline", []) or []
     matches = []
     for item in load_failure_memory():
         p = item.get("provider", "generic")
@@ -34,15 +36,20 @@ def match_failures(scene: dict, provider: str = "generic") -> list[dict]:
             triggered = bool(spoken.get("arabic")) and bool(screen)
         elif category == "exact_text":
             triggered = bool(screen)
+        elif category == "exact_text_morph":
+            triggered = bool(screen) and any(
+                _MORPH_RE.search(str(event.get("action", "")))
+                for event in timeline if isinstance(event, dict)
+            )
         if not triggered:
             continue
         matches.append({
             "rule_id": f"memory.{item.get('id', category)}",
             "agent": "Failure Memory",
-            "severity": "info",
+            "severity": item.get("severity", "info"),
             "message": f"Related prior failure: {item.get('title', category)}",
             "recommendation": item.get("expected", "Review this failure pattern before generation."),
-            "points": 0,
+            "points": int(item.get("points", 0) or 0),
             "sources": [],
         })
     return matches

@@ -1,0 +1,13 @@
+provider: pika
+name: Pika 2.5 Video
+evidence_tier: A
+rules:
+  - id: pika.precise_text
+    title: Pika 2.5 is not intended for precise on-screen text
+    trigger: exact_text_present
+    severity: warning
+    points: 18
+    recommendation: Generate the visual without critical typography, then add exact text in VPP Cut Room or another deterministic editor.
+    sources:
+      - name: Pika 2.5 Text-to-Video API
+        url: https://mcp.pika.art/models/pika/pika-2.5/text-to-video

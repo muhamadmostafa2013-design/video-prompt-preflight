@@ -5,23 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#07070a" />
   <title>Video Prompt Preflight · Director's Room</title>
-  <meta name="description" content="A funny cinematic, local-first preflight studio for AI video prompts." />
+  <meta name="description" content="A funny cinematic, local-first preflight and output-QA studio for AI video prompts." />
   <style>
-    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#07070a;--card:#121219;--ink:#fff8ec;--muted:#aaa6b1;--line:#2d2a35;--red:#ff5b54;--gold:#ffc857;--blue:#69aaff;--green:#50df8d;--shadow:0 22px 70px rgba(0,0,0,.35)}
+    :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#07070a;--card:#121219;--ink:#fff8ec;--muted:#aaa6b1;--red:#ff5b54;--gold:#ffc857;--blue:#69aaff;--green:#50df8d;--shadow:0 22px 70px rgba(0,0,0,.35)}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;color:var(--ink);background:radial-gradient(circle at 12% 0%,rgba(255,91,84,.15),transparent 25rem),radial-gradient(circle at 92% 12%,rgba(105,170,255,.11),transparent 28rem),var(--bg);overflow-x:hidden}
     body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.08;z-index:20;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
     main{max-width:980px;margin:0 auto;padding:18px 14px 60px;position:relative}.filmstrip{height:20px;border-block:1px solid rgba(255,200,87,.24);background:repeating-linear-gradient(90deg,transparent 0 22px,rgba(255,200,87,.34) 22px 30px,transparent 30px 46px);opacity:.6;border-radius:9px;margin-bottom:18px}
     .hero{padding:28px clamp(18px,4vw,38px);border:1px solid rgba(255,255,255,.1);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.018));box-shadow:var(--shadow)}
     .eyebrow{display:flex;gap:7px;flex-wrap:wrap}.badge,.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.13);padding:7px 10px;border-radius:999px;color:#d9d4dc;font-size:12px;background:rgba(8,8,12,.48)}.badge.hot{color:#ffe4a2;border-color:rgba(255,200,87,.36)}
-    h1{font-size:clamp(38px,7vw,68px);line-height:.96;letter-spacing:-.055em;margin:14px 0 10px}.gold{color:var(--gold)}p{color:var(--muted);line-height:1.6}.hero p{font-size:clamp(15px,2vw,18px);max-width:760px;margin:10px 0}.joke{color:#f1ebf2;font-weight:700}
-    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.toolbar label{display:flex;gap:8px;align-items:center;font-weight:800}select,input,textarea,pre{color:#f6f0f8;border:1px solid #34313d;background:rgba(7,7,11,.86);outline:none}select,input{padding:10px 12px;min-height:42px;border-radius:12px}textarea:focus,select:focus,input:focus{border-color:rgba(255,200,87,.6);box-shadow:0 0 0 4px rgba(255,200,87,.08)}
-    .card{margin-top:18px;background:linear-gradient(155deg,rgba(20,20,27,.97),rgba(12,12,17,.97));border:1px solid rgba(255,255,255,.1);border-radius:23px;padding:18px;box-shadow:0 14px 45px rgba(0,0,0,.22)}.section-title{display:flex;align-items:center;gap:10px;margin-bottom:12px}.section-title .icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,rgba(255,200,87,.17),rgba(255,91,84,.09));border:1px solid rgba(255,255,255,.08)}h2{font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:-.025em}.micro{font-size:13px;color:#817c89;margin:0 0 12px}
-    textarea,pre{width:100%;border-radius:15px;padding:15px;font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow:auto}textarea{min-height:300px;resize:vertical}pre{min-height:220px;max-height:420px;margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}button{min-height:44px;border-radius:13px;padding:10px 15px;font-weight:850;cursor:pointer;border:1px solid transparent;transition:.16s ease}button:hover{transform:translateY(-2px);filter:brightness(1.07)}button:active{transform:scale(.985)}button.primary{background:linear-gradient(135deg,#f9f7f0,#dcd9e2);color:#111016}button.accent{background:linear-gradient(135deg,#d9393f,#ff6656);color:white;border-color:#ff776d;box-shadow:0 12px 35px rgba(255,91,84,.16)}button.secondary{background:#20202a;color:#f4eff6;border-color:#373443}
-    #analyzeBtn:before{content:"⚡ "}#tripleBtn:before{content:"🎬 "}#optimizeBtn:before{content:"✂️ "}#copyBtn:before{content:"📋 "}
-    .verdict{border-color:rgba(255,200,87,.2);overflow:hidden}.verdict-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.verdict h2{font-size:clamp(29px,5vw,44px)}.pass{color:var(--green)}.fail{color:#ff7975}.warn{color:var(--gold)}.info{color:var(--blue)}#summaryLine{margin:10px 0 0;font-size:16px;color:#e6e0e8}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.chips .pill{font-weight:800}.route{margin-top:15px;padding:11px 13px;border:1px dashed rgba(255,200,87,.28);border-radius:14px;color:#c8c0cb;font-size:13px}.route b{color:var(--gold)}
-    .advanced{margin-top:18px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:#0d0d12;overflow:hidden}.advanced summary{cursor:pointer;list-style:none;padding:16px 18px;font-weight:850;color:#e5dfe8}.advanced summary::-webkit-details-marker{display:none}.advanced summary:after{content:" +";color:var(--gold)}.advanced[open] summary:after{content:" −"}.advanced-body{padding:0 18px 18px}.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mini{padding:14px;border:1px solid #292732;border-radius:16px;background:#101016}.mini h3{margin:0 0 9px}.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}.metric{background:#0b0b10;border:1px solid #292732;border-radius:13px;padding:10px}.metric small{display:block;color:#7e7986;font-size:10px;text-transform:uppercase;letter-spacing:.07em}.metric strong{font-size:17px}.finding{border-top:1px solid #292732;padding:11px 0;line-height:1.5}.finding:first-child{border-top:0}.finding small{color:#aaa4b1}.source{font-size:12px;margin-top:5px}.source a{color:#8ebcff}.round{margin-top:10px;padding:13px;border:1px solid #2c2936;border-radius:14px;background:#0b0b10}.candidate{padding:8px 0;border-top:1px dashed #34313d}.memory-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.hidden-pre{min-height:180px;max-height:320px}
-    footer{text-align:center;color:#777280;font-size:12px;margin-top:26px}
-    @media(max-width:760px){.toolbar .pill{width:100%;justify-content:center}.actions button{flex:1 1 100%}.advanced-grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.memory-row{grid-template-columns:1fr}.hero{padding:23px 18px;border-radius:21px}.card{padding:15px;border-radius:20px}textarea{min-height:280px}h1{font-size:45px}}
+    h1{font-size:clamp(38px,7vw,68px);line-height:.96;letter-spacing:-.055em;margin:14px 0 10px}h2{font-size:clamp(22px,3vw,30px);margin:0;letter-spacing:-.025em}h3{margin:0}.gold{color:var(--gold)}p{color:var(--muted);line-height:1.6}.hero p{font-size:clamp(15px,2vw,18px);max-width:760px;margin:10px 0}.joke{color:#f1ebf2;font-weight:700}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}.toolbar label{display:flex;gap:8px;align-items:center;font-weight:800}select,input,textarea,pre{color:#f6f0f8;border:1px solid #34313d;background:rgba(7,7,11,.86);outline:none}select,input{padding:10px 12px;min-height:42px;border-radius:12px;max-width:100%}textarea:focus,select:focus,input:focus{border-color:rgba(255,200,87,.6);box-shadow:0 0 0 4px rgba(255,200,87,.08)}
+    .card{margin-top:18px;background:linear-gradient(155deg,rgba(20,20,27,.97),rgba(12,12,17,.97));border:1px solid rgba(255,255,255,.1);border-radius:23px;padding:18px;box-shadow:0 14px 45px rgba(0,0,0,.22)}.section-title{display:flex;align-items:center;gap:10px;margin-bottom:12px}.section-title .icon{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,rgba(255,200,87,.17),rgba(255,91,84,.09));border:1px solid rgba(255,255,255,.08)}.micro{font-size:13px;color:#817c89;margin:0 0 12px}
+    textarea,pre{width:100%;border-radius:15px;padding:15px;font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow:auto}textarea{min-height:285px;resize:vertical}pre{min-height:210px;max-height:390px;margin:0}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}button,.file-pick{min-height:44px;border-radius:13px;padding:10px 15px;font-weight:850;cursor:pointer;border:1px solid transparent;transition:.16s ease;font:inherit}button:hover,.file-pick:hover{transform:translateY(-2px);filter:brightness(1.07)}button:active,.file-pick:active{transform:scale(.985)}button.primary{background:linear-gradient(135deg,#f9f7f0,#dcd9e2);color:#111016}button.accent,.file-pick{background:linear-gradient(135deg,#d9393f,#ff6656);color:white;border-color:#ff776d;box-shadow:0 12px 35px rgba(255,91,84,.16)}button.secondary{background:#20202a;color:#f4eff6;border-color:#373443}#analyzeBtn:before{content:"⚡ "}#tripleBtn:before{content:"🎬 "}#optimizeBtn:before{content:"✂️ "}#copyBtn:before{content:"📋 "}
+    .verdict{border-color:rgba(255,200,87,.2);overflow:hidden}.verdict-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.verdict h2{font-size:clamp(29px,5vw,44px)}.pass{color:var(--green)}.fail{color:#ff7975}.warn{color:var(--gold)}.info{color:var(--blue)}#summaryLine{margin:10px 0 0;font-size:16px;color:#e6e0e8}.route{margin-top:15px;padding:11px 13px;border:1px dashed rgba(255,200,87,.28);border-radius:14px;color:#c8c0cb;font-size:13px}.route b{color:var(--gold)}
+    .qa-panel{margin-top:15px;padding:14px;border:1px solid #2b2934;border-radius:17px;background:#0c0c12}.qa-status{font-size:22px;margin:0 0 8px}.qa-badge{display:inline-flex;align-items:center;margin:4px 6px 4px 0;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:850}.qa-ok{color:#bff7d4;background:rgba(80,223,141,.1);border:1px solid rgba(80,223,141,.3)}.qa-bad{color:#ffc1bf;background:rgba(255,91,84,.1);border:1px solid rgba(255,91,84,.3)}.qa-note{display:block;margin-top:8px;font-size:12px;color:#7f7987}
+    .frame-strip{display:grid;grid-template-columns:repeat(8,minmax(70px,1fr));gap:8px;overflow-x:auto;margin-top:14px;padding-bottom:4px}.frame-strip figure{margin:0;min-width:72px}.frame-strip img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;border:1px solid #322f3a;background:#09090d}.frame-strip figcaption{text-align:center;color:#7f7987;font-size:10px;margin-top:3px}.text-checks{margin-top:14px}.text-check-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;margin-top:7px;border:1px solid #2c2934;border-radius:13px;background:#101016}.text-check-row small{display:block;color:#77727f;font-size:10px;text-transform:uppercase;letter-spacing:.06em}.text-check-row strong{display:block;margin-top:2px}.text-check-actions{display:flex;gap:6px}.qa-choice{width:42px;min-width:42px;padding:0;background:#20202a;color:#eee;border-color:#373443}.qa-choice.selected{outline:2px solid var(--gold)}.row-pass{border-color:rgba(80,223,141,.38);background:rgba(80,223,141,.045)}.row-fail{border-color:rgba(255,91,84,.42);background:rgba(255,91,84,.055)}
+    .advanced{margin-top:18px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:#0d0d12;overflow:hidden}.advanced summary{cursor:pointer;list-style:none;padding:16px 18px;font-weight:850;color:#e5dfe8}.advanced summary::-webkit-details-marker{display:none}.advanced summary:after{content:" +";color:var(--gold)}.advanced[open] summary:after{content:" −"}.advanced-body{padding:0 18px 18px}.advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mini{padding:14px;border:1px solid #292732;border-radius:16px;background:#101016}.mini h3{margin:0 0 9px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}.chips .pill{font-weight:800}.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:12px}.metric{background:#0b0b10;border:1px solid #292732;border-radius:13px;padding:10px}.metric small{display:block;color:#7e7986;font-size:10px;text-transform:uppercase;letter-spacing:.07em}.metric strong{font-size:17px}.finding{border-top:1px solid #292732;padding:11px 0;line-height:1.5}.finding:first-child{border-top:0}.finding small{color:#aaa4b1}.source{font-size:12px;margin-top:5px}.source a{color:#8ebcff}.evidence{display:inline-flex;margin:4px 5px 4px 0;padding:3px 7px;border-radius:999px;border:1px solid #35313d;color:#a9a2b1;font-size:10px}.round{margin-top:10px;padding:13px;border:1px solid #2c2936;border-radius:14px;background:#0b0b10}.candidate{padding:8px 0;border-top:1px dashed #34313d}.memory-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px}.hidden-pre{min-height:180px;max-height:320px}footer{text-align:center;color:#777280;font-size:12px;margin-top:26px}
+    @media(max-width:760px){.toolbar{align-items:stretch}.toolbar label{width:100%;justify-content:space-between}.toolbar select{flex:1}.toolbar .pill{width:100%;justify-content:center}.actions button,.actions .file-pick{flex:1 1 100%}.advanced-grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}.memory-row{grid-template-columns:1fr}.hero{padding:23px 18px;border-radius:21px}.card{padding:15px;border-radius:20px}textarea{min-height:260px}h1{font-size:45px}.frame-strip{grid-template-columns:repeat(8,88px)}.text-check-row{align-items:flex-start}.qa-choice{width:46px}}
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
   </style>
 </head>
@@ -29,64 +29,82 @@
 <main>
   <div class="filmstrip" aria-hidden="true"></div>
   <header class="hero">
-    <div class="eyebrow"><span class="badge hot">🎬 NOW SCREENING · v0.3.2</span><span class="badge">open source</span><span class="badge">local-first</span></div>
+    <div class="eyebrow"><span class="badge hot">🎬 NOW SCREENING · v0.4</span><span class="badge">open source</span><span class="badge">local-first</span><span class="badge">📜 evidence constitution</span></div>
     <h1>Fix the prompt <span class="gold">before ACTION!</span></h1>
-    <p>Paste your AI-video prompt. VPP checks the stuff that usually ruins a take — timing fights, conflicting instructions, text overload and provider traps.</p>
-    <p class="joke">Basically: fewer bloopers, fewer wasted credits, happier director. 🍿</p>
+    <p>Paste your AI-video prompt. VPP catches timing fights, instruction clashes and risky exact-text tricks before you spend a generation.</p>
+    <p class="joke">Then bring the generated take back for a quick local QA. Fewer bloopers, happier director. 🍿</p>
     <div class="toolbar">
-      <label>🎥 Generator <select id="provider"><option value="generic">Generic</option><option value="veo" selected>Gemini / Veo</option><option value="runway">Runway</option></select></label>
+      <label>🎥 Generator
+        <select id="provider">
+          <option value="generic">Generic / cross-platform</option>
+          <option value="veo" selected>Gemini / Veo / Flow</option>
+          <option value="runway">Runway Gen-4 / 4.5</option>
+          <option value="kling">Kling AI</option>
+          <option value="firefly">Adobe Firefly</option>
+          <option value="luma">Luma Dream Machine</option>
+          <option value="wan">Alibaba Wan</option>
+          <option value="pixverse">PixVerse</option>
+          <option value="minimax">MiniMax / Hailuo</option>
+          <option value="higgsfield">Higgsfield</option>
+          <option value="pika">Pika</option>
+          <option value="seedance">Seedance</option>
+          <option value="midjourney">Midjourney Video</option>
+        </select>
+      </label>
       <span class="pill">⚡ Local check · 0 API calls</span>
     </div>
   </header>
 
   <section class="card">
     <div class="section-title"><span class="icon">📝</span><h2>Your scene</h2></div>
-    <p class="micro">Drop the prompt here. VPP will be picky so your generator doesn't have to improvise.</p>
+    <p class="micro">Drop the prompt here. VPP applies the selected generator's rules plus the cross-platform constitution.</p>
     <textarea id="promptInput" spellcheck="false"></textarea>
-    <div class="actions">
-      <button class="primary" id="analyzeBtn">Quick Check</button>
-      <button class="accent" id="tripleBtn">Director's Cut ×3</button>
-      <button class="secondary" id="optimizeBtn">Fix Prompt</button>
-    </div>
+    <div class="actions"><button class="primary" id="analyzeBtn">Quick Check</button><button class="accent" id="tripleBtn">Director's Cut ×3</button><button class="secondary" id="optimizeBtn">Fix Prompt</button></div>
   </section>
 
   <section class="card verdict">
     <div class="section-title"><span class="icon">🚦</span><h2>Scene Verdict</h2></div>
     <div class="verdict-top"><h2 id="status">Not analyzed</h2></div>
     <p id="summaryLine">Run a check and the director will call it.</p>
-    <div class="chips"><strong class="pill" id="risk">Risk: —</strong><strong class="pill" id="simulation">Scene Pace: —</strong><strong class="pill" id="confidence">Confidence: —</strong></div>
-    <div class="route"><b>The whole movie:</b> Prompt → Check → Triple Verify → Green Light → Generate</div>
   </section>
 
   <section class="card">
     <div class="section-title"><span class="icon">🎞️</span><h2>Final Cut Prompt</h2></div>
-    <p class="micro">This is the version to copy into your video generator.</p>
+    <p class="micro">This is the safer version to copy into your video generator.</p>
     <pre id="compiledOutput">Analyze or verify a prompt.</pre>
     <div class="actions"><button class="secondary" id="copyBtn">Copy & Roll</button></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title"><span class="icon">👀</span><h2>Check the generated take</h2></div>
+    <p class="micro">Already generated it? VPP checks duration and aspect ratio automatically, samples frames locally, then lets you confirm exact text states. The video never leaves your browser.</p>
+    <div class="actions"><label class="file-pick" for="videoInput">🎥 Pick generated video</label><input id="videoInput" type="file" accept="video/*" hidden /></div>
+    <div id="videoQaPanel" class="qa-panel" hidden>
+      <h3 id="videoQaStatus" class="qa-status">Waiting for a take…</h3>
+      <div id="videoQaSummary"></div>
+      <div id="frameStrip" class="frame-strip"></div>
+      <div class="text-checks"><p id="textQaSummary" class="micro"></p><div id="textChecklist"></div></div>
+    </div>
   </section>
 
   <details class="advanced">
     <summary>🎛️ Behind the camera — optional nerdy stuff</summary>
     <div class="advanced-body">
-      <div class="metrics">
-        <div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div>
-        <div class="metric"><small>Speech</small><strong id="mSpeech">—</strong></div>
-        <div class="metric"><small>Events</small><strong id="mEvents">—</strong></div>
-        <div class="metric"><small>Text</small><strong id="mText">—</strong></div>
-        <div class="metric"><small>Timeline</small><strong id="mTimeline">—</strong></div>
-      </div>
+      <div class="chips"><strong class="pill" id="risk">Risk: —</strong><strong class="pill" id="simulation">Scene Pace: —</strong><strong class="pill" id="confidence">Confidence: —</strong></div>
+      <div class="metrics"><div class="metric"><small>Duration</small><strong id="mDuration">—</strong></div><div class="metric"><small>Speech</small><strong id="mSpeech">—</strong></div><div class="metric"><small>Events</small><strong id="mEvents">—</strong></div><div class="metric"><small>Text</small><strong id="mText">—</strong></div><div class="metric"><small>Timeline</small><strong id="mTimeline">—</strong></div></div>
       <div class="advanced-grid">
-        <section class="mini"><h3>🧠 Findings</h3><div id="findings"></div></section>
+        <section class="mini"><h3>🧠 Evidence-backed findings</h3><div id="findings"></div></section>
         <section class="mini"><h3>🎬 Three review rounds</h3><div id="rounds"><p>Run Director's Cut ×3 to see the review room.</p></div></section>
         <section class="mini"><h3>🩻 Scene X-Ray</h3><pre class="hidden-pre" id="sceneOutput"></pre></section>
         <section class="mini"><h3>🍿 Demo buttons</h3><div class="actions"><button class="secondary" id="sampleBtn">Load good take</button><button class="secondary" id="badBtn">Load blooper</button></div></section>
       </div>
-      <section class="mini" style="margin-top:14px"><h3>💥 Bloopers Memory</h3><p class="micro">Teach VPP from a real generator mistake. Saved only in this browser.</p><div class="memory-row"><input id="failureCategory" placeholder="category"/><input id="failureObserved" placeholder="what went wrong"/><input id="failureExpected" placeholder="what should happen"/><button class="secondary" id="saveFailureBtn">Save blooper</button></div><div id="failureList"></div></section>
+      <section class="mini" style="margin-top:14px"><h3>💥 Bloopers Memory</h3><p class="micro">Real generator mistakes saved in this browser become reminders for later prompts.</p><div class="memory-row"><input id="failureCategory" placeholder="category"/><input id="failureObserved" placeholder="what went wrong"/><input id="failureExpected" placeholder="what should happen"/><button class="secondary" id="saveFailureBtn">Save blooper</button></div><div id="failureList"></div></section>
     </div>
   </details>
 
-  <footer>VPP catches preventable prompt failures. It cannot promise a stochastic video model won't decide to become an auteur. 🎭</footer>
+  <div class="route"><b>The whole movie:</b> Prompt → Constitution Check → Safer Prompt → Generate → Output QA → Learn from bloopers</div>
+  <footer>Evidence tiers: A = official · B = cross-platform/reproduced · C = community empirical · D = hypothesis. VPP still cannot promise a stochastic model won't discover experimental cinema. 🎭</footer>
 </main>
-<script src="core.js"></script><script src="triple.js"></script><script src="ui.js"></script>
+<script src="core.js"></script><script src="triple.js"></script><script src="constitution.js"></script><script src="output-qa.js"></script><script src="ui.js"></script>
 </body>
 </html>

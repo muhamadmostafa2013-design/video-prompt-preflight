@@ -1,0 +1,22 @@
+provider: wan
+name: Alibaba Wan Video
+evidence_tier: A
+rules:
+  - id: wan.image_video_formula
+    title: Wan image-to-video should focus on motion and camera movement
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Let the image define entity, scene and style; describe motion and camera movement unless you intentionally want visual changes.
+    sources:
+      - name: Alibaba Cloud — Wan Video Prompt Guide
+        url: https://www.alibabacloud.com/help/en/model-studio/text-to-video-prompt
+  - id: wan.multishot_timestamps
+    title: Multi-shot Wan prompts benefit from explicit shot order and timestamps
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Structure multi-shot intent as ordered shot numbers/timestamps with clear shot content and audio ownership.
+    sources:
+      - name: Alibaba Cloud — Wan Video Prompt Guide
+        url: https://www.alibabacloud.com/help/en/model-studio/text-to-video-prompt

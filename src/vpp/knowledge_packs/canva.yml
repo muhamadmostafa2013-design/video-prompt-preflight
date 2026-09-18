@@ -1,0 +1,31 @@
+provider: canva
+name: Canva AI Video / Magic Media
+evidence_tier: A
+rules:
+  - id: canva.front_load_focus
+    title: Put the most important subject or action first
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: Front-load the main visual idea, then add camera movement and the few details that materially affect the result.
+    sources:
+      - name: Canva Help — Write better prompts to maximize your AI allowance
+        url: https://www.canva.com/help/ai-prompting-tips/
+  - id: canva.camera_clarity
+    title: Describe camera movement explicitly when it matters
+    trigger: camera_motion_overload
+    severity: info
+    points: 0
+    recommendation: Replace several competing camera ideas with one clear path or a short ordered sequence.
+    sources:
+      - name: Canva Help — Write better prompts to maximize your AI allowance
+        url: https://www.canva.com/help/ai-prompting-tips/
+  - id: canva.cost_aware_iteration
+    title: Clear prompts reduce repeated generations and shared AI allowance usage
+    trigger: action_density_high
+    severity: info
+    points: 0
+    recommendation: Resolve the core scene and motion before adding secondary decoration; use VPP preflight to reduce avoidable re-generation.
+    sources:
+      - name: Canva Help — Write better prompts to maximize your AI allowance
+        url: https://www.canva.com/help/ai-prompting-tips/

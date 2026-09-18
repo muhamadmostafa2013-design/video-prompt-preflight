@@ -19,6 +19,8 @@ class EvidenceFinding:
     recommendation: str
     points: int
     sources: list[dict[str, str]]
+    evidence_tier: str = "B"
+    provider_scope: str = "generic"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -50,20 +52,51 @@ def _triggered(trigger: str, f: dict) -> bool:
         return f["simulation_status"] in {"tight", "overflow"} or f["event_rate_per_10s"] > 5
     if trigger == "compositional_complexity":
         return f["object_complexity"] >= 2 and f["actions"] >= 4
+    if trigger == "exact_text_morph":
+        return f.get("exact_text_morph", False)
+    if trigger == "exact_text_present":
+        return f.get("exact_text_present", False)
+    if trigger == "camera_motion_overload":
+        return f.get("camera_moves", 0) >= 3
+    if trigger == "static_camera_request":
+        return f.get("static_camera", False)
+    if trigger == "multi_speaker_dialogue":
+        return f.get("multi_speaker_dialogue", False)
+    if trigger == "json_prompt":
+        return f.get("json_like", False)
+    if trigger == "image_to_video_prompt":
+        return f.get("image_to_video_hint", False)
+    if trigger == "minimax_camera_without_command":
+        return f.get("has_camera", False) and not f.get("minimax_camera_command", False)
+    if trigger == "more_than_four_subjects":
+        return f.get("subject_count_hint", 0) > 4
+    if trigger == "high_motion_request":
+        return f.get("high_motion_hint", False)
+    if trigger == "multi_shot_prompt":
+        return f.get("multi_shot", False)
     return False
 
 
 def evaluate_knowledge(text: str, scene: dict, provider: str = "generic") -> list[EvidenceFinding]:
     features = extract_features(text, scene)
-    packs = [load_pack("research")]
-    if provider in {"veo", "runway"}:
-        packs.insert(0, load_pack(provider))
+    packs = [load_pack("constitution"), load_pack("research")]
+    provider_pack = load_pack(provider)
+    if provider != "generic" and provider_pack.get("rules"):
+        packs.insert(1, provider_pack)
+
     out: list[EvidenceFinding] = []
+    seen: set[tuple[str, str]] = set()
     for pack in packs:
         agent = f"Knowledge Scout · {pack.get('name', provider)}"
+        pack_scope = str(pack.get("provider", "generic"))
+        pack_tier = str(pack.get("evidence_tier", "B"))
         for rule in pack.get("rules", []) or []:
             if not _triggered(str(rule.get("trigger", "")), features):
                 continue
+            key = (str(rule.get("id")), pack_scope)
+            if key in seen:
+                continue
+            seen.add(key)
             out.append(EvidenceFinding(
                 rule_id=str(rule.get("id")),
                 agent=agent,
@@ -72,5 +105,7 @@ def evaluate_knowledge(text: str, scene: dict, provider: str = "generic") -> lis
                 recommendation=str(rule.get("recommendation", "")),
                 points=int(rule.get("points", 0) or 0),
                 sources=list(rule.get("sources", []) or []),
+                evidence_tier=str(rule.get("evidence_tier", pack_tier)),
+                provider_scope=str(rule.get("provider_scope", pack_scope)),
             ))
     return out

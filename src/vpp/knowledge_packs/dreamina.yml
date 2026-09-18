@@ -1,0 +1,31 @@
+provider: dreamina
+name: Dreamina / CapCut AI Video
+evidence_tier: A
+rules:
+  - id: dreamina.five_essentials
+    title: Dreamina recommends a compact five-part video brief
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: State subject, action, setting, camera and style/mood clearly. Add dialogue or sound only when it matters to the shot.
+    sources:
+      - name: Dreamina — Text to Video Generator
+        url: https://dreamina.capcut.com/tools/text-to-video-ai
+  - id: dreamina.short_first
+    title: Test the idea with the shortest useful clip before spending on a longer sequence
+    trigger: action_density_high
+    severity: info
+    points: 0
+    recommendation: Prove subject, motion, framing and style in a short first draft, then expand only after the core shot works.
+    sources:
+      - name: Dreamina — Text to Video Generator
+        url: https://dreamina.capcut.com/tools/text-to-video-ai
+  - id: dreamina.iterate_one_detail
+    title: Refine one weak dimension at a time
+    trigger: always_info
+    severity: info
+    points: 0
+    recommendation: After the first generation, review subject, motion, framing and style separately and change the failing dimension instead of rewriting everything.
+    sources:
+      - name: Dreamina — Text to Video Generator
+        url: https://dreamina.capcut.com/tools/text-to-video-ai

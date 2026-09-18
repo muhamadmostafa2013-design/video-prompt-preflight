@@ -1,0 +1,22 @@
+provider: higgsfield
+name: Higgsfield Video
+evidence_tier: A
+rules:
+  - id: higgsfield.multishot_storyboard
+    title: Use references/storyboards to anchor multi-shot continuity
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Anchor recurring subjects/locations with references and treat each shot as a film cue with subject, setting, action, style and atmosphere.
+    sources:
+      - name: Higgsfield — Popcorn storyboard guide
+        url: https://higgsfield.ai/creator-hub/help-center/ai-models/how-do-i-use-popcorn
+  - id: higgsfield.action_focus
+    title: Focus short generations on observable action and camera direction
+    trigger: action_density_high
+    severity: warning
+    points: 8
+    recommendation: Reduce simultaneous actions and iterate one meaningful change at a time.
+    sources:
+      - name: Higgsfield Creator Hub
+        url: https://higgsfield.ai/creator-hub/help-center

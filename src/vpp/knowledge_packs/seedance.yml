@@ -1,0 +1,31 @@
+provider: seedance
+name: ByteDance Seedance 2.5
+evidence_tier: A
+rules:
+  - id: seedance.multishot_native
+    title: Seedance 2.5 is designed for long-form, multi-shot storytelling
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: Keep narrative beats and continuity anchors explicit; do not apply a universal one-action or one-shot rule to Seedance 2.5.
+    sources:
+      - name: ByteDance Seed — Seedance 2.5
+        url: https://seed.bytedance.com/en/seedance2_5
+  - id: seedance.references
+    title: Seedance 2.5 supports multimodal references and editing
+    trigger: image_to_video_prompt
+    severity: info
+    points: 0
+    recommendation: Use image/video/audio references for composition, identity, motion, camera language or sound when those properties must persist across the generated story.
+    sources:
+      - name: ByteDance Seed — Introducing Seedance 2.5
+        url: https://seed.bytedance.com/en/blog/one-take-creation-flexible-referencing-introducing-seedance-2-5
+  - id: seedance.complex_motion
+    title: Complex motion is a supported strength, so complexity warnings are advisory rather than universal blocks
+    trigger: action_density_high
+    severity: info
+    points: 0
+    recommendation: Preserve clear action order, actor identity and camera intent. Use VPP's timing warnings to clarify the prompt, not to automatically split every complex Seedance sequence.
+    sources:
+      - name: ByteDance Seed — Introducing Seedance 2.5
+        url: https://seed.bytedance.com/en/blog/one-take-creation-flexible-referencing-introducing-seedance-2-5

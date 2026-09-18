@@ -1,30 +1,84 @@
 provider: veo
-name: Google Veo 3
+name: Google Gemini / Veo / Flow
+evidence_tier: A
 rules:
   - id: veo.prompt.structure
-    title: Cover the shot, style, lighting, character/location and action only when relevant
+    title: Use a clear cinematography, subject, action, context and style structure
     trigger: veo_sparse_structure
     severity: info
     points: 0
-    recommendation: Add missing control details only when they materially affect the intended shot; do not pad the prompt.
+    recommendation: Add missing camera/framing control only when it materially affects the shot; keep the scene visually explicit rather than padded.
+    evidence_tier: A
     sources:
-      - name: Google DeepMind — How to create effective prompts with Veo 3
-        url: https://deepmind.google/models/veo/prompt-guide/
+      - name: Google Cloud — Ultimate prompting guide for Veo 3.1
+        url: https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-veo-3-1
   - id: veo.audio.explicit
     title: Make dialogue and sound ownership explicit
     trigger: mixed_language_audio
     severity: warning
     points: 10
-    recommendation: Assign each spoken language to one explicit speaker/voice and separate dialogue from sound-design instructions.
+    recommendation: Assign each spoken language to one explicit speaker/voice and separate dialogue, SFX and ambience.
+    evidence_tier: A
     sources:
-      - name: Google DeepMind — How to create effective prompts with Veo 3
-        url: https://deepmind.google/models/veo/prompt-guide/
+      - name: Google Cloud — Ultimate prompting guide for Veo 3.1
+        url: https://cloud.google.com/blog/products/ai-machine-learning/ultimate-prompting-guide-for-veo-3-1
   - id: veo.fast_action.detail
     title: Fast complex action needs a clear play-by-play
     trigger: complex_action_without_timeline
     severity: warning
     points: 10
     recommendation: Convert fast multi-step action into a short ordered timeline with one primary action per beat.
+    evidence_tier: A
     sources:
-      - name: Google DeepMind — How to create effective prompts with Veo 3
+      - name: Google DeepMind — Veo prompt guide
         url: https://deepmind.google/models/veo/prompt-guide/
+  - id: veo.multishot.references
+    title: Use Flow references/ingredients or frames when continuity matters across shots
+    trigger: multi_shot_prompt
+    severity: info
+    points: 0
+    recommendation: When available, anchor recurring characters/objects with Flow ingredients or start/end frames instead of relying on prose alone.
+    evidence_tier: A
+    sources:
+      - name: Google Flow Help — Create videos and use references
+        url: https://support.google.com/flow/answer/16353334
+  - id: veo.exact_text_morph
+    title: Exact text morphing has a confirmed VPP regression risk
+    trigger: exact_text_morph
+    severity: warning
+    points: 20
+    recommendation: Use discrete static text states separated by clean hard cuts. For spelling-critical educational text, prefer post-production overlays.
+    evidence_tier: B
+    sources:
+      - name: VPP regression — exact-text morph corruption
+        url: https://github.com/muhamadmostafa2013-design/video-prompt-preflight/blob/main/failures/0003_exact_text_morph_corruption.json
+  - id: veo.multispeaker.community
+    title: Community reports show speaker attribution can drift in multi-person dialogue
+    trigger: multi_speaker_dialogue
+    severity: warning
+    points: 6
+    recommendation: "Treat this as an empirical risk: simplify to one active speaker per shot when correctness matters, or split/stitch lines in editing."
+    evidence_tier: C
+    sources:
+      - name: Reddit r/VEO3 — wrong dialogue attribution report
+        url: https://www.reddit.com/r/VEO3/comments/1mprm33/help_with_wrong_characterspeechdialogue/
+  - id: veo.static_camera.community
+    title: Community reports show static-camera intent can still drift
+    trigger: static_camera_request
+    severity: info
+    points: 0
+    recommendation: Use clear positive language such as locked/static framing and verify the output; if exact endpoints matter, use frames where the workflow supports them.
+    evidence_tier: C
+    sources:
+      - name: Reddit r/VEO3 — unwanted zoom despite locked-camera prompt
+        url: https://www.reddit.com/r/VEO3/comments/1mpksvy/video_keep_zooming_in_even_if_told_not_to/
+  - id: veo.json.community
+    title: JSON is useful for organization, but community evidence does not show a universal intrinsic quality gain
+    trigger: json_prompt
+    severity: info
+    points: 0
+    recommendation: Keep JSON if it improves reproducibility or editing, but do not add markup merely because it is believed to be a magic Veo syntax.
+    evidence_tier: C
+    sources:
+      - name: Reddit r/VEO3 — JSON prompt comparison discussion
+        url: https://www.reddit.com/r/VEO3/comments/1rah79n/does_veo_3_really_work_better_with_the_json_prompt/

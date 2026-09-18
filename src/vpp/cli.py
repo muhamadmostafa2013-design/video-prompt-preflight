@@ -14,6 +14,29 @@ from .parser import parse_prompt
 from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
 from .triple_review import triple_review
+from .jev_judge import jev_review
+
+PROVIDERS = [
+    "generic",
+    "gemini_omni",
+    "veo",
+    "runway",
+    "firefly",
+    "luma",
+    "kling",
+    "wan",
+    "pixverse",
+    "minimax",
+    "higgsfield",
+    "pika",
+    "seedance",
+    "midjourney",
+    "grok",
+    "vidu",
+    "dreamina",
+    "canva",
+    "sora_legacy",
+]
 
 
 def _read_text(path: str) -> str:
@@ -99,12 +122,87 @@ def cmd_triple_review(args: argparse.Namespace) -> int:
         for rnd in result["rounds"]:
             print(f"ROUND {rnd['round']} — {rnd['name']}")
             for f in rnd.get("findings", []):
-                print(f"  [{f['severity'].upper()}] {f['agent']} · {f['rule_id']}: {f['message']}")
+                tier = f.get("evidence_tier")
+                tier_text = f" · tier={tier}" if tier else ""
+                print(f"  [{f['severity'].upper()}] {f['agent']} · {f['rule_id']}{tier_text}: {f['message']}")
             if rnd.get("winner"):
                 print(f"  winner: {rnd['winner']}")
         print("\nFINAL PROMPT\n------------")
         print(result["final_prompt"])
     return 0 if result["passed"] else 2
+
+
+def cmd_jev_review(args: argparse.Namespace) -> int:
+    text = _read_text(args.file)
+    local = triple_review(text, provider=args.provider)
+    client = None
+    model = args.model
+
+    if args.engine in {"openai", "anthropic"}:
+        if not args.model:
+            print("--model is required when --engine is openai or anthropic.", file=sys.stderr)
+            return 2
+        try:
+            from system_one_adapter import SystemOneAdapterClient
+        except ImportError:
+            extra = "adapter-openai" if args.engine == "openai" else "adapter-anthropic"
+            print(
+                f"Adapter mode is optional. Install it with: pip install 'video-prompt-preflight[{extra}]'",
+                file=sys.stderr,
+            )
+            return 2
+
+        client = SystemOneAdapterClient(
+            structured_outputs=True,
+            llm_answer_mode="probabilities",
+            normalize_probabilities=True,
+            n_retry_malformed_structure=1,
+            provider=args.engine,
+            model=args.model,
+        )
+        model = None
+
+    try:
+        result = jev_review(local, original_prompt=text, model=model, client=client)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    finally:
+        if client is not None and hasattr(client, "close"):
+            client.close()
+
+    payload = {"triple_review": local, "judge_engine": args.engine, "jev": result}
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        winner = result["candidate_judge"]["winner"]
+        gate = result["semantic_gate"]["decision"]
+        print(
+            f"JEV {gate['decision'].upper()} | provider={args.provider} "
+            f"| winner={winner['name']} | utility={winner['utility']:.3f}"
+        )
+        print(
+            f"constraints={winner['hard_constraints_probability']:.2f} "
+            f"| provider_fit={winner['provider_fit_probability']:.2f} "
+            f"| ambiguity={winner['ambiguity_probability']:.2f} "
+            f"| candidate_risk={winner['risk_score']:.2f}/4"
+        )
+        print(
+            f"gate_risk={gate['risk_score']:.2f}/4 "
+            f"| dominant_risk={gate['dominant_risk']} "
+            f"| confidence={gate['confidence']:.2f}"
+        )
+        print("\nJEV CANDIDATE RANKING")
+        for i, row in enumerate(result["candidate_judge"]["ranking"], start=1):
+            print(
+                f"  {i}. {row['name']} | utility={row['utility']:.3f} "
+                f"| constraints={row['hard_constraints_probability']:.2f} "
+                f"| fit={row['provider_fit_probability']:.2f} "
+                f"| risk={row['risk_score']:.2f}/4"
+            )
+        print("\nFINAL PROMPT\n------------")
+        print(result["final_prompt"])
+    return 0 if result["decision"] == "release" else 2
 
 
 def cmd_simulate(args: argparse.Namespace) -> int:
@@ -154,9 +252,19 @@ def build_parser() -> argparse.ArgumentParser:
 
     triple = sub.add_parser("triple-review", help="Run 3-round local multi-agent preflight")
     triple.add_argument("file")
-    triple.add_argument("--provider", choices=["generic", "veo", "runway"], default="generic")
+    triple.add_argument("--provider", choices=PROVIDERS, default="generic")
     triple.add_argument("--json", action="store_true")
     triple.set_defaults(func=cmd_triple_review)
+
+
+    jev = sub.add_parser("jev-review", help="Rank A/B/C with Jev or the official System One Adapter")
+    jev.add_argument("file")
+    jev.add_argument("--provider", choices=PROVIDERS, default="generic")
+    jev.add_argument("--engine", choices=["jev", "openai", "anthropic"], default="jev",
+                     help="Judge backend. 'jev' uses TypeSafe; openai/anthropic use TypeSafe's System One Adapter.")
+    jev.add_argument("--model", help="Optional Jev model id; required for adapter engines")
+    jev.add_argument("--json", action="store_true")
+    jev.set_defaults(func=cmd_jev_review)
 
     sim = sub.add_parser("simulate", help="Estimate timing pressure for a Scene Spec")
     sim.add_argument("file")

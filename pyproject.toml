@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "video-prompt-preflight"
-version = "0.3.0"
+version = "0.4.0"
 description = "Deterministic preflight checks and compact prompt compilation for AI video generators."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,9 @@ dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.6"]
+jev = ["typesafe-sdk>=0.6.0"]
+adapter-openai = ["system-one-adapter[openai]>=0.1.4"]
+adapter-anthropic = ["system-one-adapter[anthropic]>=0.1.4"]
 
 [project.scripts]
 vpp = "vpp.cli:main"
