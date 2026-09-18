@@ -18,6 +18,22 @@ class JevGateDecision:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class JevCandidateScore:
+    key: str
+    name: str
+    hard_constraints_probability: float
+    provider_fit_probability: float
+    ambiguity_probability: float
+    risk_score: float
+    deterministic_score: float
+    hard_constraint_coverage: int
+    utility: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 def derive_gate(
     *,
     hard_constraints_probability: float,
@@ -60,7 +76,67 @@ def derive_gate(
     )
 
 
-def _compact_state(review_result: dict, original_prompt: str) -> dict[str, Any]:
+def candidate_utility(
+    *,
+    hard_constraints_probability: float,
+    provider_fit_probability: float,
+    ambiguity_probability: float,
+    risk_score: float,
+    deterministic_score: float,
+    hard_constraint_coverage: int,
+) -> float:
+    """Combine Jev probabilities with VPP's deterministic score.
+
+    Hard constraints are a gate, not merely another preference. A candidate
+    with deterministic coverage below 100% is heavily penalized.
+    """
+    hard = max(0.0, min(1.0, float(hard_constraints_probability)))
+    fit = max(0.0, min(1.0, float(provider_fit_probability)))
+    ambiguity = max(0.0, min(1.0, float(ambiguity_probability)))
+    risk = max(0.0, min(4.0, float(risk_score))) / 4.0
+    det = max(0.0, min(100.0, float(deterministic_score))) / 100.0
+    coverage = max(0, min(100, int(hard_constraint_coverage)))
+
+    utility = (
+        hard * 0.42
+        + fit * 0.28
+        + (1.0 - ambiguity) * 0.10
+        + (1.0 - risk) * 0.15
+        + det * 0.05
+    )
+
+    if coverage < 100:
+        utility -= 0.50 + (100 - coverage) / 200.0
+    if hard < 0.65:
+        utility -= 0.35
+    return round(utility, 6)
+
+
+def rank_candidate_scores(rows: list[dict[str, Any]]) -> list[JevCandidateScore]:
+    ranked: list[JevCandidateScore] = []
+    for row in rows:
+        ranked.append(JevCandidateScore(
+            key=str(row["key"]),
+            name=str(row["name"]),
+            hard_constraints_probability=float(row["hard_constraints_probability"]),
+            provider_fit_probability=float(row["provider_fit_probability"]),
+            ambiguity_probability=float(row["ambiguity_probability"]),
+            risk_score=float(row["risk_score"]),
+            deterministic_score=float(row.get("deterministic_score", 0)),
+            hard_constraint_coverage=int(row.get("hard_constraint_coverage", 0)),
+            utility=candidate_utility(
+                hard_constraints_probability=float(row["hard_constraints_probability"]),
+                provider_fit_probability=float(row["provider_fit_probability"]),
+                ambiguity_probability=float(row["ambiguity_probability"]),
+                risk_score=float(row["risk_score"]),
+                deterministic_score=float(row.get("deterministic_score", 0)),
+                hard_constraint_coverage=int(row.get("hard_constraint_coverage", 0)),
+            ),
+        ))
+    return sorted(ranked, key=lambda x: x.utility, reverse=True)
+
+
+def _compact_findings(review_result: dict) -> list[dict[str, Any]]:
     findings = []
     for item in review_result.get("findings", []):
         findings.append({
@@ -70,7 +146,10 @@ def _compact_state(review_result: dict, original_prompt: str) -> dict[str, Any]:
             "recommendation": item.get("recommendation"),
             "evidence_tier": item.get("evidence_tier"),
         })
+    return findings
 
+
+def _compact_state(review_result: dict, original_prompt: str) -> dict[str, Any]:
     return {
         "task": "Decide whether this AI-video prompt should be released, reviewed, or blocked before generation.",
         "provider": review_result.get("provider", "generic"),
@@ -83,8 +162,143 @@ def _compact_state(review_result: dict, original_prompt: str) -> dict[str, Any]:
             "score": review_result.get("heuristic_score"),
             "confidence": review_result.get("confidence_band"),
         },
-        "findings": findings,
+        "findings": _compact_findings(review_result),
     }
+
+
+def _client_and_types(client: Any | None):
+    try:
+        from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
+    except ImportError as exc:
+        raise RuntimeError(
+            "Jev support is optional. Install it with: pip install 'video-prompt-preflight[jev]'"
+        ) from exc
+
+    owns_client = client is None
+    if owns_client:
+        client = TypeSafeClient()
+    return client, owns_client, Choice, Noul, Score
+
+
+def jev_rank_candidates(
+    review_result: dict,
+    *,
+    original_prompt: str,
+    model: str | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Ask Jev to judge A/B/C in parallel, then rank them deterministically."""
+    client, owns_client, Choice, Noul, Score = _client_and_types(client)
+    candidates = list((review_result.get("rounds") or [{}])[0].get("candidates") or [])
+    if not candidates:
+        raise RuntimeError("No candidates were found in the triple-review result.")
+
+    state_candidates = []
+    questions: dict[str, Any] = {}
+    labels: dict[str, str] = {}
+
+    for idx, candidate in enumerate(candidates):
+        key = f"c{idx}"
+        labels[key] = str(candidate.get("name", key))
+        state_candidates.append({
+            "key": key,
+            "name": candidate.get("name"),
+            "prompt": candidate.get("prompt"),
+            "deterministic_score": candidate.get("score"),
+            "hard_constraint_coverage": candidate.get("hard_constraint_coverage"),
+            "token_estimate": candidate.get("token_estimate"),
+        })
+        questions[f"{key}_constraints"] = Noul(
+            instructions=(
+                f"Candidate {key} preserves every explicit hard constraint and required "
+                "piece of content from the original prompt."
+            )
+        )
+        questions[f"{key}_provider_fit"] = Noul(
+            instructions=(
+                f"Candidate {key} is well suited to the named video provider and is "
+                "unlikely to create avoidable semantic confusion."
+            )
+        )
+        questions[f"{key}_ambiguity"] = Noul(
+            instructions=(
+                f"Candidate {key} still contains meaningful ambiguity that could cause "
+                "a preventable generation failure."
+            )
+        )
+        questions[f"{key}_risk"] = Score(
+            instructions=f"Score the remaining preventable generation risk in candidate {key}.",
+            criteria=[
+                "minimal preventable risk",
+                "low preventable risk",
+                "moderate preventable risk",
+                "high preventable risk",
+                "critical preventable risk",
+            ],
+        )
+
+    questions["best_candidate"] = Choice(
+        instructions=(
+            "Choose the strongest candidate overall. Prioritize complete hard-constraint "
+            "preservation first, provider fit second, then lower ambiguity and failure risk."
+        ),
+        criteria={key: name for key, name in labels.items()},
+    )
+
+    state = {
+        "task": "Compare multiple candidate prompts for one AI-video generation request.",
+        "provider": review_result.get("provider", "generic"),
+        "original_prompt": original_prompt,
+        "scene": review_result.get("scene", {}),
+        "findings": _compact_findings(review_result),
+        "candidates": state_candidates,
+    }
+
+    try:
+        kwargs: dict[str, Any] = {"state": state, "questions": questions}
+        if model:
+            kwargs["model"] = model
+        response = client.system_one(**kwargs)
+
+        rows: list[dict[str, Any]] = []
+        for idx, candidate in enumerate(candidates):
+            key = f"c{idx}"
+            rows.append({
+                "key": key,
+                "name": candidate.get("name", key),
+                "hard_constraints_probability": response.nouls[f"{key}_constraints"].noul,
+                "provider_fit_probability": response.nouls[f"{key}_provider_fit"].noul,
+                "ambiguity_probability": response.nouls[f"{key}_ambiguity"].noul,
+                "risk_score": response.scores[f"{key}_risk"].score,
+                "deterministic_score": candidate.get("score", 0),
+                "hard_constraint_coverage": candidate.get("hard_constraint_coverage", 0),
+            })
+
+        ranked = rank_candidate_scores(rows)
+        best_answer = response.choices["best_candidate"]
+        winner = ranked[0]
+        winner_candidate = next(c for c, s in zip(candidates, [f"c{i}" for i in range(len(candidates))]) if s == winner.key)
+
+        return {
+            "engine": "jev",
+            "model": response.model,
+            "winner": winner.to_dict(),
+            "winner_prompt": winner_candidate.get("prompt", ""),
+            "ranking": [x.to_dict() for x in ranked],
+            "jev_advisory_choice": {
+                "key": best_answer.choice,
+                "name": labels.get(best_answer.choice, best_answer.choice),
+                "confidence": best_answer.confidence,
+                "probabilities": dict(best_answer.probabilities),
+            },
+            "usage": {
+                "input_tokens": getattr(response.usage, "input_tokens", None),
+                "output_tokens": getattr(response.usage, "output_tokens", None),
+            },
+        }
+    finally:
+        if owns_client and hasattr(client, "close"):
+            client.close()
 
 
 def jev_gate(
@@ -94,19 +308,8 @@ def jev_gate(
     model: str | None = None,
     client: Any | None = None,
 ) -> dict[str, Any]:
-    """Run an optional Jev semantic gate after VPP's deterministic triple review.
-
-    Jev is intentionally used only for typed judgments. It never generates or
-    rewrites the final prompt. If no client is supplied, TYPESAFE_API_KEY is
-    read by the official TypeSafe SDK.
-    """
-    try:
-        from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
-    except ImportError as exc:
-        raise RuntimeError(
-            "Jev support is optional. Install it with: pip install 'video-prompt-preflight[jev]'"
-        ) from exc
-
+    """Run an optional Jev semantic gate after VPP's deterministic triple review."""
+    client, owns_client, Choice, Noul, Score = _client_and_types(client)
     state = _compact_state(review_result, original_prompt)
 
     questions = {
@@ -158,10 +361,6 @@ def jev_gate(
         ),
     }
 
-    owns_client = client is None
-    if owns_client:
-        client = TypeSafeClient()
-
     try:
         kwargs: dict[str, Any] = {"state": state, "questions": questions}
         if model:
@@ -196,6 +395,46 @@ def jev_gate(
                 "input_tokens": getattr(response.usage, "input_tokens", None),
                 "output_tokens": getattr(response.usage, "output_tokens", None),
             },
+        }
+    finally:
+        if owns_client and hasattr(client, "close"):
+            client.close()
+
+
+def jev_review(
+    review_result: dict,
+    *,
+    original_prompt: str,
+    model: str | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Rank candidates with Jev, then gate the deterministic winner.
+
+    When a caller passes one client, both requests reuse it. The candidate
+    ranking remains deterministic once Jev has returned its probabilities.
+    """
+    client, owns_client, _, _, _ = _client_and_types(client)
+    try:
+        ranking = jev_rank_candidates(
+            review_result,
+            original_prompt=original_prompt,
+            model=model,
+            client=client,
+        )
+        selected = dict(review_result)
+        selected["final_prompt"] = ranking["winner_prompt"]
+
+        gate = jev_gate(
+            selected,
+            original_prompt=original_prompt,
+            model=model,
+            client=client,
+        )
+        return {
+            "candidate_judge": ranking,
+            "semantic_gate": gate,
+            "final_prompt": ranking["winner_prompt"],
+            "decision": gate["decision"]["decision"],
         }
     finally:
         if owns_client and hasattr(client, "close"):
