@@ -135,13 +135,43 @@ def cmd_triple_review(args: argparse.Namespace) -> int:
 def cmd_jev_review(args: argparse.Namespace) -> int:
     text = _read_text(args.file)
     local = triple_review(text, provider=args.provider)
+    client = None
+    model = args.model
+
+    if args.engine in {"openai", "anthropic"}:
+        if not args.model:
+            print("--model is required when --engine is openai or anthropic.", file=sys.stderr)
+            return 2
+        try:
+            from system_one_adapter import SystemOneAdapterClient
+        except ImportError:
+            extra = "adapter-openai" if args.engine == "openai" else "adapter-anthropic"
+            print(
+                f"Adapter mode is optional. Install it with: pip install 'video-prompt-preflight[{extra}]'",
+                file=sys.stderr,
+            )
+            return 2
+
+        client = SystemOneAdapterClient(
+            structured_outputs=True,
+            llm_answer_mode="probabilities",
+            normalize_probabilities=True,
+            n_retry_malformed_structure=1,
+            provider=args.engine,
+            model=args.model,
+        )
+        model = None
+
     try:
-        result = jev_review(local, original_prompt=text, model=args.model)
+        result = jev_review(local, original_prompt=text, model=model, client=client)
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    finally:
+        if client is not None and hasattr(client, "close"):
+            client.close()
 
-    payload = {"triple_review": local, "jev": result}
+    payload = {"triple_review": local, "judge_engine": args.engine, "jev": result}
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
@@ -227,10 +257,12 @@ def build_parser() -> argparse.ArgumentParser:
     triple.set_defaults(func=cmd_triple_review)
 
 
-    jev = sub.add_parser("jev-review", help="Rank A/B/C with TypeSafe Jev, then run a semantic release gate")
+    jev = sub.add_parser("jev-review", help="Rank A/B/C with Jev or the official System One Adapter")
     jev.add_argument("file")
     jev.add_argument("--provider", choices=PROVIDERS, default="generic")
-    jev.add_argument("--model", help="Optional explicit TypeSafe model identifier")
+    jev.add_argument("--engine", choices=["jev", "openai", "anthropic"], default="jev",
+                     help="Judge backend. 'jev' uses TypeSafe; openai/anthropic use TypeSafe's System One Adapter.")
+    jev.add_argument("--model", help="Optional Jev model id; required for adapter engines")
     jev.add_argument("--json", action="store_true")
     jev.set_defaults(func=cmd_jev_review)
 
