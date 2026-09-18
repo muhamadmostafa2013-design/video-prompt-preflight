@@ -14,6 +14,7 @@ from .parser import parse_prompt
 from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
 from .triple_review import triple_review
+from .jev_judge import jev_review
 
 PROVIDERS = [
     "generic",
@@ -131,6 +132,49 @@ def cmd_triple_review(args: argparse.Namespace) -> int:
     return 0 if result["passed"] else 2
 
 
+def cmd_jev_review(args: argparse.Namespace) -> int:
+    text = _read_text(args.file)
+    local = triple_review(text, provider=args.provider)
+    try:
+        result = jev_review(local, original_prompt=text, model=args.model)
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    payload = {"triple_review": local, "jev": result}
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        winner = result["candidate_judge"]["winner"]
+        gate = result["semantic_gate"]["decision"]
+        print(
+            f"JEV {gate['decision'].upper()} | provider={args.provider} "
+            f"| winner={winner['name']} | utility={winner['utility']:.3f}"
+        )
+        print(
+            f"constraints={winner['hard_constraints_probability']:.2f} "
+            f"| provider_fit={winner['provider_fit_probability']:.2f} "
+            f"| ambiguity={winner['ambiguity_probability']:.2f} "
+            f"| candidate_risk={winner['risk_score']:.2f}/4"
+        )
+        print(
+            f"gate_risk={gate['risk_score']:.2f}/4 "
+            f"| dominant_risk={gate['dominant_risk']} "
+            f"| confidence={gate['confidence']:.2f}"
+        )
+        print("\nJEV CANDIDATE RANKING")
+        for i, row in enumerate(result["candidate_judge"]["ranking"], start=1):
+            print(
+                f"  {i}. {row['name']} | utility={row['utility']:.3f} "
+                f"| constraints={row['hard_constraints_probability']:.2f} "
+                f"| fit={row['provider_fit_probability']:.2f} "
+                f"| risk={row['risk_score']:.2f}/4"
+            )
+        print("\nFINAL PROMPT\n------------")
+        print(result["final_prompt"])
+    return 0 if result["decision"] == "release" else 2
+
+
 def cmd_simulate(args: argparse.Namespace) -> int:
     scene = load_scene(args.file)
     simulation = simulate_scene(scene)
@@ -181,6 +225,14 @@ def build_parser() -> argparse.ArgumentParser:
     triple.add_argument("--provider", choices=PROVIDERS, default="generic")
     triple.add_argument("--json", action="store_true")
     triple.set_defaults(func=cmd_triple_review)
+
+
+    jev = sub.add_parser("jev-review", help="Rank A/B/C with TypeSafe Jev, then run a semantic release gate")
+    jev.add_argument("file")
+    jev.add_argument("--provider", choices=PROVIDERS, default="generic")
+    jev.add_argument("--model", help="Optional explicit TypeSafe model identifier")
+    jev.add_argument("--json", action="store_true")
+    jev.set_defaults(func=cmd_jev_review)
 
     sim = sub.add_parser("simulate", help="Estimate timing pressure for a Scene Spec")
     sim.add_argument("file")
