@@ -57,7 +57,7 @@ rules:
     trigger: multi_speaker_dialogue
     severity: warning
     points: 6
-    recommendation: Treat this as an empirical risk: simplify to one active speaker per shot when correctness matters, or split/stitch lines in editing.
+    recommendation: "Treat this as an empirical risk: simplify to one active speaker per shot when correctness matters, or split/stitch lines in editing."
     evidence_tier: C
     sources:
       - name: Reddit r/VEO3 — wrong dialogue attribution report
