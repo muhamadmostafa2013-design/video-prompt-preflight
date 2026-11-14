@@ -5,13 +5,19 @@ import re
 _MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\s+(.+?)\s+(?:into|to)\s+([^;]+)(.*)$", re.I)
 
 
-def _safe_text_action(action: str) -> str:
+def _safe_text_action(action: str, exact_text: list[str] | None = None) -> str:
     original = str(action or "").strip()
     match = _MORPH_RE.search(original)
     if not match:
         return original
     before = match.group(1).strip()
     after = match.group(2).strip()
+    exact = [str(x).casefold() for x in (exact_text or [])]
+    # Only rewrite actual text-to-text transitions. Never turn camera/motion
+    # instructions into literal screen text, even when text exists elsewhere.
+    if not exact or not (any(x in before.casefold() for x in exact)
+                        and any(x in after.casefold() for x in exact)):
+        return original
     tail = (match.group(3) or "").lstrip("; ").strip()
     safe = (
         f"show {before} as static text, hold clearly, hard cut, then show {after} as static text; "
@@ -60,10 +66,11 @@ def compile_scene(scene: dict) -> str:
         cursor = 0.0
         for event in timeline:
             seconds = float(event.get("seconds", 0))
-            start, end = cursor, cursor + seconds
+            start = float(event["start"]) if "start" in event else cursor
+            end = float(event["end"]) if "end" in event else start + seconds
             action = str(event.get("action", "")).strip()
             if screen_text:
-                action = _safe_text_action(action)
+                action = _safe_text_action(action, screen_text)
             parts.append(f"{start:g}-{end:g}s {action}")
             cursor = end
         lines.append("TIMELINE: " + "; ".join(parts))
