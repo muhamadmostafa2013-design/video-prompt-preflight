@@ -1,5 +1,7 @@
 """Offline media QA contract tests. Optional binaries/models are mocked deliberately."""
 from pathlib import Path
+import shutil
+import subprocess
 from unittest.mock import patch
 import pytest
 
@@ -99,3 +101,23 @@ def test_normalization_handles_unicode_and_whitespace():
 def test_missing_video_fails_safely():
     with pytest.raises(media_qa.MediaQAError, match="does not exist"):
         media_qa.probe_video("/nonexistent-vpp-test.mp4")
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")),
+                    reason="ffmpeg and ffprobe are optional system binaries")
+def test_real_video_metadata_probe_and_gate(tmp_path):
+    video = tmp_path / "sample.mp4"
+    subprocess.run(
+        ["ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi",
+         "-i", "color=c=black:s=360x640:r=10:d=1", "-t", "1",
+         "-c:v", "mpeg4", str(video)], check=True, timeout=35,
+    )
+    metadata = media_qa.probe_video(video)
+    assert metadata["width"] == 360
+    assert metadata["height"] == 640
+    assert metadata["has_audio"] is False
+    good = media_qa.inspect_video(
+        video, {"duration_seconds": 1, "aspect_ratio": "9:16"}
+    )
+    assert good["decision"] == "pass"
+    wrong = media_qa.inspect_video(video, {"duration_seconds": 3})
+    assert wrong["decision"] == "fail"
