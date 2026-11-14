@@ -181,8 +181,14 @@ def parse_prompt(text: str) -> dict:
 
     lower = text.lower()
     no_arabic = bool(re.search(r"(?:no|do not|don't|without)\s+(?:any\s+)?arabic\s+(?:text|writing|subtitles?)", lower))
-    no_subtitles = bool(re.search(r"(?:no|do not|don't|without)\s+(?:automatic\s+)?subtitles?", lower))
-    no_music = bool(re.search(r"(?:no|without|do not use|don't use)\s+(?:background\s+)?music", lower))
+    no_subtitles = bool(re.search(
+        r"(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:show|add|include|generate|use)\s+)?)"
+        r"(?:automatic\s+)?subtitles?\b", lower
+    ))
+    no_music = bool(re.search(
+        r"(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:add|play|include|use|generate)\s+)?)"
+        r"(?:background\s+)?music\b", lower
+    ) or re.search(r"(?:بدون|من غير|لا تستخدم|لا تضيف)\s+(?:أي\s+)?موسي(?:قى|قا)", text))
     presenter_arabic_only = bool(re.search(r"presenter[^.\n]{0,80}(?:arabic only|speaks?[^.\n]{0,30}arabic)", lower))
     german_forbidden = bool(re.search(r"presenter[^.\n]{0,100}(?:must not|do not|don't)[^.\n]{0,50}pronounce[^.\n]{0,40}german", lower))
     if german_forbidden:
