@@ -20,7 +20,7 @@ def analyze_prompt(text: str) -> tuple[dict, Report]:
     low = text.lower()
 
     durations = scene.get("parse_meta", {}).get("duration_mentions", [])
-    unique_durations = sorted(set(round(float(x), 3) for x in durations))
+    unique_durations = sorted({round(float(x), 3) for x in durations})
     if len(unique_durations) > 1:
         _add(report, "prompt.duration.conflict", "error", f"Conflicting duration mentions found: {unique_durations}.", "Use one exact scene duration.", 35)
 
