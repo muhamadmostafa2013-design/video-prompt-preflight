@@ -26,13 +26,15 @@ def analyze_prompt(text: str) -> tuple[dict, Report]:
 
     # Music contradictions.
     no_music = bool(re.search(r"(?:no|without|do not use|don't use)\s+(?:background\s+)?music", low))
-    wants_music = bool(re.search(r"(?:add|use|with|include)\s+(?:soft\s+|subtle\s+)?(?:background\s+)?music", low))
+    positive_music_text = re.sub(r"\b(?:do not|don't|never)\s+(?:add|use|include|play)\b", "forbid", low)
+    wants_music = bool(re.search(r"\b(?:add|use|with|include|play)\s+(?:soft\s+|subtle\s+)?(?:background\s+)?music\b", positive_music_text))
     if no_music and wants_music:
         _add(report, "prompt.music.conflict", "error", "Prompt both forbids and requests music.", "Choose one audio policy.", 30)
 
     # Subtitle contradictions.
     no_sub = bool(re.search(r"(?:no|without|do not|don't)\s+(?:automatic\s+)?subtitles?", low))
-    wants_sub = bool(re.search(r"(?:add|show|include|generate)\s+(?:automatic\s+)?subtitles?", low))
+    positive_sub_text = re.sub(r"\b(?:do not|don't|never)\s+(?:add|show|include|generate)\b", "forbid", low)
+    wants_sub = bool(re.search(r"\b(?:add|show|include|generate)\s+(?:automatic\s+)?subtitles?\b", positive_sub_text))
     if no_sub and wants_sub:
         _add(report, "prompt.subtitle.conflict", "error", "Prompt both forbids and requests subtitles.", "Keep subtitles entirely in post-production or entirely in generation.", 30)
 
@@ -50,6 +52,27 @@ def analyze_prompt(text: str) -> tuple[dict, Report]:
             break
     if forbid_german_presenter and asks_presenter_german:
         _add(report, "prompt.audio.conflict", "error", "Presenter is told both not to pronounce German and to say/pronounce German.", "Reserve German for post-production or a separate verified voice.", 40)
+
+    # Arabic-only conflicts are not yet covered by the English deterministic parser.
+    if re.search(r"(?:بدون|من غير|لا تستخدم)\s+(?:أي\s+)?موسيقى", text) and re.search(
+        r"(?:ضيف|أضف|شغّل|حط|استخدم)\s+(?:موسيقى|موسيقا)", text
+    ):
+        _add(report, "prompt.music.conflict.ar", "error",
+             "Arabic prompt both forbids and requests music.",
+             "Use a single explicit music policy.", 30)
+    if not scene.get("parse_meta", {}).get("duration_explicit"):
+        _add(report, "prompt.duration.inferred", "warning",
+             "Scene duration was inferred as 10s; no explicit total scene duration found.",
+             "State the total duration (e.g. create a 10 second video).", 8)
+    if not scene.get("parse_meta", {}).get("aspect_explicit"):
+        _add(report, "prompt.aspect.inferred", "info",
+             "Aspect ratio defaults to 9:16; no explicit ratio found.",
+             "Confirm aspect ratio before generation.", 0)
+    # Conservative language-support warning for Arabic instructions outside known patterns.
+    if re.search(r"[\u0600-\u06ff]", text) and not re.search(r"[A-Za-z]", text):
+        _add(report, "prompt.arabic.limited", "warning",
+             "Arabic-only free-form instructions are only partially covered by deterministic rules.",
+             "Review the source prompt manually or use a structured Scene Spec.", 10)
 
     # Complexity estimate from imperative/action verbs.
     action_hits = re.findall(r"\b(?:show|display|transform|animate|cut|zoom|move|switch|split|highlight|pause|transition|appear|disappear)\b", low)
