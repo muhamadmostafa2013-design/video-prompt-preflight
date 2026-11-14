@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 
+from .analyzer import analyze_scene
 from .models import Finding, Report
 from .parser import parse_prompt
-from .analyzer import analyze_scene
 
 
 def _add(report: Report, rule_id: str, severity: str, message: str, suggestion: str | None, points: int) -> None:
@@ -20,7 +20,7 @@ def analyze_prompt(text: str) -> tuple[dict, Report]:
     low = text.lower()
 
     durations = scene.get("parse_meta", {}).get("duration_mentions", [])
-    unique_durations = sorted(set(round(float(x), 3) for x in durations))
+    unique_durations = sorted({round(float(x), 3) for x in durations})
     if len(unique_durations) > 1:
         _add(report, "prompt.duration.conflict", "error", f"Conflicting duration mentions found: {unique_durations}.", "Use one exact scene duration.", 35)
 

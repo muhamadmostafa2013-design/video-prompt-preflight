@@ -1,0 +1,103 @@
+[
+  {
+    "name": "valid_global_with_short_hold",
+    "prompt": "Create a 10 second 9:16 video. Hold for 2 seconds.",
+    "duration": 10,
+    "check_no_duration_conflict": true
+  },
+  {
+    "name": "music_negative",
+    "prompt": "Create a 10 second 9:16 video. Do not use background music.",
+    "duration": 10,
+    "no_music": true,
+    "check_no_music_conflict": true
+  },
+  {
+    "name": "negated_add_music",
+    "prompt": "Create a 10 second 9:16 video. Do not add music.",
+    "duration": 10,
+    "no_music": true,
+    "check_no_music_conflict": true
+  },
+  {
+    "name": "music_true_conflict",
+    "prompt": "Create a 10 second 9:16 video. No background music. Add subtle background music.",
+    "duration": 10,
+    "no_music": true,
+    "expect_finding": "prompt.music.conflict"
+  },
+  {
+    "name": "no_subtitle",
+    "prompt": "Create a 10 second 9:16 video. Do not show subtitles.",
+    "duration": 10,
+    "no_subtitles": true,
+    "check_no_subtitle_conflict": true
+  },
+  {
+    "name": "subtitle_conflict",
+    "prompt": "Create a 10 second 9:16 video. No subtitles. Show subtitles.",
+    "duration": 10,
+    "no_subtitles": true,
+    "expect_finding": "prompt.subtitle.conflict"
+  },
+  {
+    "name": "timeline_gaps",
+    "prompt": "Create a 10 second 9:16 video.\nTIMELINE:\n3-5s show intro\n7-9s show finale",
+    "duration": 10,
+    "timeline_starts": [
+      3,
+      7
+    ],
+    "timeline_ends": [
+      5,
+      9
+    ]
+  },
+  {
+    "name": "timeline_seconds_units",
+    "prompt": "Create a 10 second 9:16 video.\nTIMELINE:\n0-3 seconds show intro\n7-9 secs show finale",
+    "duration": 10,
+    "timeline_starts": [
+      0,
+      7
+    ],
+    "timeline_ends": [
+      3,
+      9
+    ]
+  },
+  {
+    "name": "timeline_overlap",
+    "prompt": "Create a 10 second 9:16 video.\nTIMELINE:\n0-5s show intro\n4-8s show outro",
+    "duration": 10,
+    "expect_finding": "timeline.overlap"
+  },
+  {
+    "name": "show_imperative_not_exact_text",
+    "prompt": "Create a 10 second 9:16 video.\nShow a dramatic sunset.\nWarm studio lighting.",
+    "duration": 10,
+    "screen": []
+  },
+  {
+    "name": "literal_screen_text",
+    "prompt": "Create a 10 second 9:16 video.\nON SCREEN:\nlaufen\nsich verlaufen\n",
+    "duration": 10,
+    "screen": [
+      "laufen",
+      "sich verlaufen"
+    ]
+  },
+  {
+    "name": "arabic_music_conflict",
+    "prompt": "اعمل فيديو بدون موسيقى وضيف موسيقى",
+    "no_music": true,
+    "expect_finding": "prompt.music.conflict.ar",
+    "expect_finding_secondary": "prompt.duration.inferred"
+  },
+  {
+    "name": "inferred_duration",
+    "prompt": "Show a cinematic flower.",
+    "expect_finding": "prompt.duration.inferred",
+    "duration": 10
+  }
+]

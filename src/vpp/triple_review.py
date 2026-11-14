@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from . import __version__
-
 import re
 
-from .prompt_analyzer import analyze_prompt
-from .simulator import simulate_scene
-from .knowledge import evaluate_knowledge
+from . import __version__
 from .candidates import build_candidates
 from .failure_memory import match_failures
+from .knowledge import evaluate_knowledge
+from .prompt_analyzer import analyze_prompt
+from .simulator import simulate_scene
 
-_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.IGNORECASE)
 
 
 def _dedupe(items: list[dict]) -> list[dict]:
@@ -85,7 +84,9 @@ def triple_review(text: str, provider: str = "generic") -> dict:
     all_findings = _dedupe(round1_findings + evidence + memory + redteam)
     errors = [x for x in all_findings if x.get("severity") == "error"]
     warnings = [x for x in all_findings if x.get("severity") == "warning"]
-    gate_pass = not errors and sim.status != "overflow"
+    unresolved = {"prompt.duration.inferred", "prompt.arabic.limited"}
+    has_unresolved = any(x.get("rule_id") in unresolved for x in round1_findings)
+    gate_pass = not errors and not has_unresolved and sim.status != "overflow"
     heuristic_score = max(0, 100 - sum(int(x.get("points", 0) or 0) for x in all_findings))
     confidence = "high" if gate_pass and len(warnings) <= 1 else "medium" if gate_pass else "low"
     winner = candidates[0]
@@ -111,7 +112,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
         "rounds": [
             {"round": 1, "name": "Correctness + candidate comparison", "findings": round1_findings, "candidates": [c.to_dict() for c in candidates], "winner": winner.name},
             {"round": 2, "name": "Failure prediction + evidence + memory", "findings": evidence + memory + redteam},
-            {"round": 3, "name": "Independent gatekeeper", "passed": gate_pass, "heuristic_score": heuristic_score, "confidence_band": confidence},
+            {"round": 3, "name": "Deterministic release gate", "passed": gate_pass, "heuristic_score": heuristic_score, "confidence_band": confidence},
         ],
         "final_prompt": winner.prompt,
         "passed": gate_pass,

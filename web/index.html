@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="theme-color" content="#07070a" />
   <title>Video Prompt Preflight · Director's Room</title>
   <meta name="description" content="A funny cinematic, local-first preflight and output-QA studio for AI video prompts." />
@@ -29,7 +30,7 @@
 <main>
   <div class="filmstrip" aria-hidden="true"></div>
   <header class="hero">
-    <div class="eyebrow"><span class="badge hot">🎬 NOW SCREENING · v0.5.2</span><span class="badge">open source</span><span class="badge">local-first</span><span class="badge">📜 evidence constitution</span></div>
+    <div class="eyebrow"><span class="badge hot">🎬 NOW SCREENING · v0.5.3</span><span class="badge">open source</span><span class="badge">local-first</span><span class="badge">📜 evidence constitution</span></div>
     <h1>Fix the prompt <span class="gold">before ACTION!</span></h1>
     <p>Paste your AI-video prompt. VPP catches timing fights, instruction clashes and risky exact-text tricks before you spend a generation.</p>
     <p class="joke">Then bring the generated take back for a quick local QA. For optional offline OCR and ASR, see the project CLI. Fewer bloopers, happier director. 🍿</p>
@@ -57,14 +58,14 @@
 
   <section class="card">
     <div class="section-title"><span class="icon">📝</span><h2>Your scene</h2></div>
-    <p class="micro">Drop the prompt here. VPP applies the selected generator's rules plus the cross-platform constitution.</p>
-    <textarea id="promptInput" spellcheck="false"></textarea>
+    <p id="promptHelp" class="micro">Drop the prompt here. VPP applies the selected generator's rules plus the cross-platform constitution.</p>
+    <label for="promptInput">AI video prompt</label><textarea id="promptInput" spellcheck="false" dir="auto" aria-describedby="promptHelp"></textarea>
     <div class="actions"><button class="primary" id="analyzeBtn">Quick Check</button><button class="accent" id="tripleBtn">Director's Cut ×3</button><button class="secondary" id="optimizeBtn">Fix Prompt</button></div>
   </section>
 
   <section class="card verdict">
     <div class="section-title"><span class="icon">🚦</span><h2>Scene Verdict</h2></div>
-    <div class="verdict-top"><h2 id="status">Not analyzed</h2></div>
+    <div class="verdict-top"><h2 id="status" role="status" aria-live="polite">Not analyzed</h2></div>
     <p id="summaryLine">Run a check and the director will call it.</p>
   </section>
 
@@ -78,9 +79,10 @@
   <section class="card">
     <div class="section-title"><span class="icon">👀</span><h2>Check the generated take</h2></div>
     <p class="micro">Already generated it? VPP checks duration and aspect ratio automatically, samples frames locally, then lets you confirm exact text states. The video never leaves your browser.</p>
-    <div class="actions"><label class="file-pick" for="videoInput">🎥 Pick generated video</label><input id="videoInput" type="file" accept="video/*" hidden /></div>
+    <div class="actions"><label class="file-pick" for="videoInput">🎥 Pick generated video</label><input id="videoInput" type="file" accept="video/*" aria-label="Choose a local video file for quality review" /></div>
     <div id="videoQaPanel" class="qa-panel" hidden>
-      <h3 id="videoQaStatus" class="qa-status">Waiting for a take…</h3>
+      <h3 id="videoQaStatus" class="qa-status" role="status" aria-live="polite">Waiting for a take…</h3>
+      <video id="qaVideoPreview" controls playsinline preload="metadata" aria-label="Play the entire uploaded video to verify text, timing and sound" style="max-width:100%;width:100%;max-height:420px;margin:12px 0;border-radius:12px;background:#050508" hidden></video>
       <div id="videoQaSummary"></div>
       <div id="frameStrip" class="frame-strip"></div>
       <div class="text-checks"><p id="textQaSummary" class="micro"></p><div id="textChecklist"></div></div>
@@ -98,7 +100,7 @@
         <section class="mini"><h3>🩻 Scene X-Ray</h3><pre class="hidden-pre" id="sceneOutput"></pre></section>
         <section class="mini"><h3>🍿 Demo buttons</h3><div class="actions"><button class="secondary" id="sampleBtn">Load good take</button><button class="secondary" id="badBtn">Load blooper</button></div></section>
       </div>
-      <section class="mini" style="margin-top:14px"><h3>💥 Bloopers Memory</h3><p class="micro">Real generator mistakes saved in this browser become reminders for later prompts.</p><div class="memory-row"><input id="failureCategory" placeholder="category"/><input id="failureObserved" placeholder="what went wrong"/><input id="failureExpected" placeholder="what should happen"/><button class="secondary" id="saveFailureBtn">Save blooper</button></div><div id="failureList"></div></section>
+      <section class="mini" style="margin-top:14px"><h3>💥 Bloopers Memory</h3><p class="micro">Real generator mistakes saved in this browser become reminders for later prompts.</p><div class="memory-row"><input id="failureCategory" placeholder="category" aria-label="Failure category"/><input id="failureObserved" placeholder="what went wrong" aria-label="Observed failure"/><input id="failureExpected" placeholder="what should happen" aria-label="Expected correct output"/><button class="secondary" id="saveFailureBtn">Save blooper</button></div><div id="failureList"></div></section>
     </div>
   </details>
 

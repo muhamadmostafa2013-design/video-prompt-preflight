@@ -138,9 +138,9 @@ function verdictCopy(passed,fs,triple=false){
   const warns=fs.filter(f=>f.severity==='warning').length;
   const morph=fs.some(f=>/morph|text_transition/.test(f.rule_id));
   if(morph)return "The spelling is fine on paper, but the text transition is asking for trouble. Use static states + hard cuts. 🔤✂️";
-  if(passed&&triple&&warns===0)return "Three passes, no blocking issues. The crew can stop arguing now. 🎬";
-  if(passed&&warns)return `Shootable, with ${warns} evidence-backed director note${warns>1?'s':''}. 🍿`;
-  if(passed)return "Looks shoot-ready. No preventable prompt bloopers found. 🍿";
+  if(passed&&triple&&warns===0)return "Three local review stages passed; the generated video still needs inspection.";
+  if(passed&&warns)return `Local review found ${warns} advisory note(s). Verify before generation.`;
+  if(passed)return "No blocking local issues detected. Generated output accuracy is not guaranteed.";
   return `${errors||fs.length} blocking issue${(errors||fs.length)!==1?'s':''} found. One more take before you spend a credit. ✋`;
 }
 
@@ -152,7 +152,7 @@ function fast(opt=false){
   const passed=!fs.some(f=>f.severity==="error");
   const risk=Math.min(100,fs.reduce((s,f)=>s+(f.points||0),0));
 
-  $("status").textContent=passed?"GREEN LIGHT 🎬":"CUT! FIX FIRST ✋";
+  $("status").textContent=passed?"LOCAL CHECK PASSED":"REVIEW / FIX REQUIRED";
   $("status").className=passed?"pass":"fail";
   $("risk").textContent=`Deterministic Risk: ${risk}/100`;
   $("confidence").textContent="Confidence: fast-mode";
@@ -193,7 +193,7 @@ async function triple(){
   let res=A.tripleReview(input.value,provider,failures());
   res=mergeConstitution(res,provider);
 
-  $("status").textContent=res.passed?"GREEN LIGHT · 3× VERIFIED 🎬":"CUT! GATE BLOCKED ✋";
+  $("status").textContent=res.passed?"LOCAL 3-ROUND REVIEW PASSED":"REVIEW / GATE BLOCKED";
   $("status").className=res.passed?"pass":"fail";
   $("risk").textContent=`Review Score: ${res.score}/100`;
   $("confidence").textContent=`Confidence: ${res.confidence}`;
@@ -221,19 +221,21 @@ function drawMemory(){
       <strong>💥 ${escapeHtml(x.category)}</strong><br>
       <small>Observed:</small> ${escapeHtml(x.observed)}<br>
       <small>Expected:</small> ${escapeHtml(x.expected)}
-      <button class="secondary" onclick="deleteFailure(${i})">Delete</button>
+      <button type="button" class="secondary memory-delete" data-index="${i}" aria-label="Delete saved failure ${i+1}">Delete</button>
     </div>`
   ).join(""):"<p>No bloopers saved yet. Your first bad take gets a starring role here. 🍿</p>";
 }
 
-window.deleteFailure=i=>{
-  const a=failures();
+$("failureList").addEventListener("click",event=>{
+  const button=event.target.closest?.(".memory-delete");
+  if(!button)return;
+  const i=Number(button.dataset.index),a=failures();
+  if(!Number.isInteger(i)||i<0||i>=a.length)return;
   a.splice(i,1);
   try{localStorage.setItem("vpp_failures",JSON.stringify(a));}
-  catch{summaryEl.textContent="Your browser blocked local storage. This note was not saved.";}
-
+  catch{summaryEl.textContent="Your browser blocked local storage. This note was not saved.";return;}
   drawMemory();
-};
+});
 
 $("saveFailureBtn").onclick=()=>{
   const category=$("failureCategory").value.trim(),

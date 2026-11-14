@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+
 from .text import contains_arabic
 
 

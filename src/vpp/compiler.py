@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\s+(.+?)\s+(?:into|to)\s+([^;]+)(.*)$", re.I)
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\s+(.+?)\s+(?:into|to)\s+([^;]+)(.*)$", re.IGNORECASE)
 
 
 def _safe_text_action(action: str, exact_text: list[str] | None = None) -> str:

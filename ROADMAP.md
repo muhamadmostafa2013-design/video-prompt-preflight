@@ -7,6 +7,9 @@
 - **0.5:** local `check-video` CLI with optional Tesseract OCR and offline ASR,
   machine-readable JSON report and explicit human approval gate.
 
+- **0.5.3:** 13 shared Python/browser semantic cases, real Chromium E2E, full Ruff, whole-video playback,
+  explicit remote judge consent, secure browser UI, and no false acceptance of missing metadata.
+
 ## Not yet shipped / subject to validation
 - Browser-native automatic OCR and transcript checking without external services.
 - Provider API generation connectors (credentials, costs and provider approval required).

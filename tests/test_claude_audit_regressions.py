@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 from argparse import Namespace
-from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -11,8 +10,6 @@ import pytest
 from vpp.compiler import compile_scene
 from vpp.failure_memory import load_failure_memory
 from vpp.jev_judge import jev_review
-from vpp.media_qa import probe_video
-from vpp.optimizer import optimize_prompt
 from vpp.parser import parse_prompt
 from vpp.prompt_analyzer import analyze_prompt
 
@@ -194,6 +191,7 @@ def test_arabic_policy_can_trigger_ocr_without_screen_text(monkeypatch):
                     reason="requires local FFmpeg binaries")
 def test_real_silent_audio_track_is_not_accepted_as_speech(tmp_path):
     import subprocess
+
     from vpp.media_qa import inspect_video
     video = tmp_path / "silent-with-audio.mp4"
     subprocess.run([

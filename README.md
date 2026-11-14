@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.2 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.3 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.5.2: local Triple Verify + optional Jev judge and media QA
+## v0.5.3: local Triple Verify + optional Jev judge and media QA
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -106,7 +106,7 @@ vpp import-prompt <prompt.txt> -o scene.yml
 vpp lint-prompt <prompt.txt>
 vpp optimize <prompt.txt> -o optimized.txt --spec scene.yml
 vpp triple-review <prompt.txt> --provider veo
-vpp jev-review <prompt.txt> --provider veo
+vpp jev-review <prompt.txt> --provider veo --allow-remote-judge
 vpp check-video <video.mp4> --spec <scene.yml> [--ocr] [--asr-model /local/model]
 ```
 
@@ -171,7 +171,7 @@ Optional local-only ASR needs the `media-asr` extra and a pre-downloaded local f
 
 ## Roadmap
 
-- **v0.5 (current):** multi-provider preflight, three local review rounds, browser metadata/frames and opt-in local OCR/ASR evidence CLI.
+- **v0.5.3 (current):** multi-provider preflight, three local review rounds, browser metadata/frames and opt-in local OCR/ASR evidence CLI.
 - **Next:** independent real-video benchmarks, accessible manual QA workflow, secure optional judge proxy, provider adapters and cost budgets.
 - Generation APIs are deliberately not bundled: generator account credentials, per-video billing and explicit deployment permissions are needed.
 
@@ -198,3 +198,15 @@ See [audit remediation](docs/CLAUDE_AUDIT_REMEDIATION_AR.md).
 pronunciation or subtitle compliance. Browser QA asks for manual whole-video
 whitelist review. Local CLI OCR/ASR require optional tooling, and real provider
 APIs + multilingual real-world benchmarks remain outside this release.
+
+## v0.5.3 deep validation, shared engine parity, and privacy
+
+- Python and browser engines run against the SAME golden fixture corpus (13 cases covering duration, negations, timeline and text intent).
+- Full Ruff lint, Python 3.10–3.12 regression suite, real FFmpeg/Tesseract + isolated Wheel installation, Node VM, and real Chromium browser tests are CI gates.
+- The browser now includes a playable local video alongside sampled frames, rather than pretending eight screenshots prove video-wide compliance.
+- Inferred metadata values **never** trigger automatic timing/aspect bug reports; missing specifications demand human confirmation.
+- Browser CSP and keyboard-accessible form controls hardened; inline event handlers removed.
+- `jev-review` explicitly requires `--allow-remote-judge` because selecting Jev/OpenAI/Anthropic can share the source prompt with a third-party SDK. Don't use it for sensitive prompts without authorization.
+- Python CLI handles invalid input/YAML without raw tracebacks, and review-required inputs return status `3`.
+
+See [deep validation and residual risks](docs/TEST_EVIDENCE_v0.5.3.md). Passing tests does **not** certify real-world multilingual OCR/ASR accuracy or any provider API.

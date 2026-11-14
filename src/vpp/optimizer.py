@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+from .analyzer import analyze_scene
 from .compiler import compile_scene
 from .fixer import auto_fix_scene
 from .prompt_analyzer import analyze_prompt
-from .analyzer import analyze_scene
-
 
 _AMBIGUOUS_CONFLICTS = {
     "prompt.duration.conflict",

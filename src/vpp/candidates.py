@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
-from .compiler import compile_scene, _safe_text_action
+from .compiler import _safe_text_action, compile_scene
 
 
 @dataclass
@@ -24,7 +24,7 @@ def _token_estimate(text: str) -> int:
 
 
 def _negative_count(text: str) -> int:
-    return len(re.findall(r"\b(?:no|not|never|without|avoid|don't|do not|must not)\b", text, re.I))
+    return len(re.findall(r"\b(?:no|not|never|without|avoid|don't|do not|must not)\b", text, re.IGNORECASE))
 
 
 def _contract(scene: dict) -> list[str]:
@@ -131,7 +131,7 @@ def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
         if name.startswith("A") and (scene.get("rules") or {}).get("no_arabic_on_screen"):
             score += 4
         if name.startswith("A") and any(
-            re.search(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", str(e.get("action", "")), re.I)
+            re.search(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", str(e.get("action", "")), re.IGNORECASE)
             for e in scene.get("timeline", []) or [] if isinstance(e, dict)
         ):
             score += 10

@@ -102,7 +102,7 @@ window.VPP = window.VPP || {};
 
   A.candidates=(scene,provider)=>{
     const strict=A.compile(scene);
-    const safeEvents=(scene.timeline||[]).map(e=>({...e,action:scene.screen_text?.length?A.safeTextAction(e.action):e.action}));
+    const safeEvents=(scene.timeline||[]).map(e=>({...e,action:scene.screen_text?.length?A.safeTextAction(e.action,scene.screen_text):e.action}));
 
     const minimal=[
       `${scene.aspect_ratio||"9:16"} video, exactly ${scene.duration_seconds||10}s.`,
@@ -117,7 +117,11 @@ window.VPP = window.VPP || {};
     const timeline=[
       `SHOT: ${scene.aspect_ratio||"9:16"}, exact ${scene.duration_seconds||10}s.`,
       scene.style?.length?`Style: ${scene.style.join("; ")}.`:"",
-      ...safeEvents.map(e=>{const s=c;c+=Number(e.seconds||0);return `${s}-${c}s: ${e.action}`}),
+      ...safeEvents.map(e=>{
+        const start=e.start===undefined?c:Number(e.start);
+        const end=e.end===undefined?start+Number(e.seconds||0):Number(e.end);
+        c=end;return `${start}-${end}s: ${e.action}`;
+      }),
       scene.screen_text?.length?`Exact visible strings only: ${scene.screen_text.join(" | ")}`:"",
       scene.spoken?.arabic?`Arabic speech only: "${scene.spoken.arabic}"`:"",
       ...contract(scene)
@@ -162,7 +166,8 @@ window.VPP = window.VPP || {};
 
     let all=[...r1,...ev,...mem,...red];
     const errors=all.filter(x=>x.severity==="error"),warnings=all.filter(x=>x.severity==="warning");
-    let passed=!errors.length&&sim.status!=="overflow";
+    const unresolved=r1.some(x=>["prompt.duration.inferred","prompt.arabic.limited"].includes(x.rule_id));
+    let passed=!errors.length&&!unresolved&&sim.status!=="overflow";
     let score=Math.max(0,100-all.reduce((s,x)=>s+(x.points||0),0));
     let confidence=passed&&warnings.length<=1?"high":passed?"medium":"low";
 
@@ -176,7 +181,7 @@ window.VPP = window.VPP || {};
       rounds:[
         {round:1,name:"Correctness + candidate comparison",findings:r1,candidates:cand,winner:cand[0].name},
         {round:2,name:"Failure prediction + evidence + memory",findings:[...ev,...mem,...red]},
-        {round:3,name:"Independent gatekeeper",passed,score,confidence}
+        {round:3,name:"Deterministic release gate",passed,score,confidence}
       ],
       finalPrompt:cand[0].prompt,
       findings:all,

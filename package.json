@@ -1,0 +1,12 @@
+{
+  "name": "vpp-browser-tests",
+  "private": true,
+  "version": "0.5.3",
+  "description": "Test-only dependencies for actual browser acceptance suite",
+  "scripts": {
+    "test:e2e": "playwright test --config tests/playwright.config.cjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

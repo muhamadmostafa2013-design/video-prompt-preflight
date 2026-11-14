@@ -4,10 +4,9 @@ import re
 
 from .text import contains_arabic
 
-
-_DURATION_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b", re.I)
+_DURATION_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b", re.IGNORECASE)
 _ASPECT_RE = re.compile(r"\b(9\s*:\s*16|16\s*:\s*9|1\s*:\s*1|4\s*:\s*5)\b")
-_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)", re.I)
+_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)", re.IGNORECASE)
 _QUOTED_RE = re.compile(r'["“”](.*?)["“”]')
 
 _MARKERS = {
@@ -94,11 +93,14 @@ def _extract_screen_text(text: str) -> list[str]:
                     capture = False
             continue
 
-        marker_hit = any(m in low for m in _MARKERS)
+        # Only a recognized section heading can begin capture. An ordinary
+        # imperative such as "show dramatic sunset" is NOT a text block.
+        header = low.split(":", 1)[0].strip()
+        marker_hit = header in _MARKERS and (":" in line or low in _MARKERS)
         if capture and line.endswith(":") and not marker_hit:
             capture = False
             continue
-        if marker_hit and (line.endswith(":") or low in _MARKERS or low.startswith(tuple(_MARKERS))):
+        if marker_hit:
             capture = True
             capture_budget = 8
             if ":" in line:
@@ -112,13 +114,13 @@ def _extract_screen_text(text: str) -> list[str]:
             candidate = line.strip('"“”')
             if _looks_like_exact_text(candidate) and not re.search(
                 r"\b(?:lighting|cinematic|camera|background|studio|vertical|portrait|audio|music|subtitles)\b",
-                candidate, re.I
+                candidate, re.IGNORECASE
             ):
                 out.append(candidate)
             if capture_budget <= 0 or low.startswith(_STOP_PREFIXES):
                 capture = False
 
-    for m in re.finditer(r"(?:on[- ]screen|display|show|text)\s*(?:text)?\s*[:=]?\s*[\"“]([^\"”]+)[\"”]", text, re.I):
+    for m in re.finditer(r"(?:on[- ]screen|display|show|text)\s*(?:text)?\s*[:=]?\s*[\"“]([^\"”]+)[\"”]", text, re.IGNORECASE):
         value = m.group(1).strip()
         if value and not contains_arabic(value):
             out.append(value)
@@ -154,9 +156,16 @@ def parse_prompt(text: str) -> dict:
     # Global scene durations must not be confused with individual hold/action times.
     durations = []
     for match in _DURATION_RE.finditer(text):
-        beginning = text.rfind("\n", 0, match.start()) + 1
+        # Examine only the local clause: a total-duration phrase earlier in
+        # the same line must not turn a later "hold 2 seconds" into a conflict.
+        beginning = max(text.rfind("\n", 0, match.start()),
+                        text.rfind(".", 0, match.start()),
+                        text.rfind(";", 0, match.start()),
+                        text.rfind(",", 0, match.start())) + 1
         line_prefix = text[beginning:match.start()].lower()
-        line_suffix = text[match.end():text.find("\n", match.end()) if "\n" in text[match.end():] else len(text)].lower()
+        end_offsets = [i for sep in ("\n", ".", ";", ",")
+                       if (i := text.find(sep, match.end())) >= 0]
+        line_suffix = text[match.end():min(end_offsets) if end_offsets else len(text)].lower()
         if re.search(r"\b(?:hold|wait|pause|delay|after|before)\s+(?:for\s+)?$", line_prefix):
             continue
         if re.search(r"\d+\s*[-–—]\s*$", line_prefix):
@@ -171,8 +180,14 @@ def parse_prompt(text: str) -> dict:
 
     lower = text.lower()
     no_arabic = bool(re.search(r"(?:no|do not|don't|without)\s+(?:any\s+)?arabic\s+(?:text|writing|subtitles?)", lower))
-    no_subtitles = bool(re.search(r"(?:no|do not|don't|without)\s+(?:automatic\s+)?subtitles?", lower))
-    no_music = bool(re.search(r"(?:no|without|do not use|don't use)\s+(?:background\s+)?music", lower))
+    no_subtitles = bool(re.search(
+        r"(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:show|add|include|generate|use)\s+)?)"
+        r"(?:automatic\s+)?subtitles?\b", lower
+    ))
+    no_music = bool(re.search(
+        r"(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:add|play|include|use|generate)\s+)?)"
+        r"(?:background\s+)?music\b", lower
+    ) or re.search(r"(?:بدون|من غير|لا تستخدم|لا تضيف)\s+(?:أي\s+)?موسي(?:قى|قا)", text))
     presenter_arabic_only = bool(re.search(r"presenter[^.\n]{0,80}(?:arabic only|speaks?[^.\n]{0,30}arabic)", lower))
     german_forbidden = bool(re.search(r"presenter[^.\n]{0,100}(?:must not|do not|don't)[^.\n]{0,50}pronounce[^.\n]{0,40}german", lower))
     if german_forbidden:
