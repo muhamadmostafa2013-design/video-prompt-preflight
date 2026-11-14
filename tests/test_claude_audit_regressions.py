@@ -157,3 +157,52 @@ def test_anamorphic_pixel_ratio(tmp_path, monkeypatch):
     }))
     result = qa.probe_video(p)
     assert result["aspect_ratio"] == pytest.approx(4/3, abs=0.0001)
+
+
+def test_sampled_ocr_whitelist_extras_are_review_not_pass(monkeypatch):
+    import vpp.media_qa as qa
+    monkeypatch.setattr(qa, "probe_video", lambda _: {
+        "duration_seconds": 5, "width": 100, "height": 200,
+        "aspect_ratio": .5, "has_audio": False,
+    })
+    monkeypatch.setattr(qa, "sample_frames", lambda *args: [{"seconds": 2, "path": "fake.png"}])
+    monkeypatch.setattr(qa, "ocr_frames", lambda *args: [
+        {"seconds": 2, "text": "laufen unexpected subtitle"}])
+    report = qa.inspect_video("test.mp4", {"text_whitelist": ["laufen"],
+                                           "screen_text": ["laufen"]}, ocr=True)
+    checks = [x for x in report["checks"] if x["name"] == "ocr_whitelist_review"]
+    assert report["decision"] == "review"
+    assert checks and "unexpected" in checks[0]["unmatched_ocr_tokens"]
+
+
+def test_arabic_policy_can_trigger_ocr_without_screen_text(monkeypatch):
+    import vpp.media_qa as qa
+    monkeypatch.setattr(qa, "probe_video", lambda _: {
+        "duration_seconds": 5, "width": 100, "height": 200,
+        "aspect_ratio": .5, "has_audio": False,
+    })
+    monkeypatch.setattr(qa, "sample_frames", lambda *args: [{"seconds": 2, "path": "fake.png"}])
+    monkeypatch.setattr(qa, "ocr_frames", lambda *args: [
+        {"seconds": 2, "text": "هذه كلمات عربية"}])
+    report = qa.inspect_video("fake.mp4", {"rules": {"no_arabic_on_screen": True}}, ocr=True)
+    check = next(c for c in report["checks"] if c["name"] == "forbidden_arabic_visual")
+    assert check["sampled_arabic"] is True
+    assert report["decision"] == "review"
+
+
+@pytest.mark.skipif(not (__import__("shutil").which("ffmpeg") and __import__("shutil").which("ffprobe")),
+                    reason="requires local FFmpeg binaries")
+def test_real_silent_audio_track_is_not_accepted_as_speech(tmp_path):
+    import subprocess
+    from vpp.media_qa import inspect_video
+    video = tmp_path / "silent-with-audio.mp4"
+    subprocess.run([
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", "color=c=black:s=320x240:r=12:d=2",
+        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
+        "-t", "2", "-c:v", "mpeg4", "-c:a", "aac",
+        "-shortest", str(video),
+    ], check=True, timeout=45, capture_output=True, text=True)
+    report = inspect_video(video, {"spoken": {"arabic": "مرحبا يا أصدقاء"}})
+    assert report["decision"] == "fail"
+    assert any(c["name"] == "audio_level" and c["status"] == "fail" for c in report["checks"])
