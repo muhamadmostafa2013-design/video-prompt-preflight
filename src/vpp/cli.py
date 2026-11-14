@@ -224,6 +224,13 @@ def cmd_check_video(args: argparse.Namespace) -> int:
             args.video, scene, ocr=args.ocr, ocr_lang=args.ocr_lang,
             asr_model=args.asr_model, frames=args.frames,
         )
+        if not args.spec:
+            result["checks"].append({
+                "name": "missing_scene_spec", "status": "review",
+                "reason": "No scene spec supplied: duration, ratio and content cannot be verified",
+            })
+            if result["decision"] == "pass":
+                result["decision"] = "review"
     except (MediaQAError, ValueError, OSError) as exc:
         print(f"Media QA error: {exc}", file=sys.stderr)
         return 2
