@@ -29,6 +29,12 @@ jobs:
         run: python -m pip install -e '.[dev,media-ocr]'
       - name: Gate 1–10 | Real acceptance tests
         run: pytest -vv tests/test_release_acceptance.py --junitxml=release-acceptance.xml
+      - name: Verify installed wheel includes failure-memory corpus
+        run: |
+          python -m pip wheel . --no-deps --wheel-dir /tmp/vpp-dist
+          python -m venv /tmp/vpp-isolated
+          /tmp/vpp-isolated/bin/pip install --no-deps /tmp/vpp-dist/*.whl
+          (cd /tmp && /tmp/vpp-isolated/bin/python -c "from vpp.failure_memory import load_failure_memory; assert len(load_failure_memory()) >= 3")
       - name: Browser JS syntax check
         run: |
           for f in web/*.js; do node --check "$f"; done
