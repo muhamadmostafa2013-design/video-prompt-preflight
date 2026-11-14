@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1 — release hardening / independent acceptance
+- Synced version across package, CLI review output and front-end label.
+- Escaped untrusted values before browser DOM insertion, including locally saved mistakes and knowledge-source links.
+- Restricted source evidence hrefs to HTTPS and handled malformed local history.
+- Added 15-second media load/seek timeout and 512 MiB local browser input limit.
+- Added a dedicated ten-gate acceptance workflow with real MP4 and local OCR test.
+- Kept optional media dependencies out of generic Python 3.10–3.12 matrix.
+- Added an independent Claude review prompt and honest release-evidence checklist.
+
+
 ## 0.5.0 — local video QA evidence
 - Added offline `vpp check-video` CLI for actual video duration/aspect/audio-stream checks.
 - Added optional sampled-frame OCR with locally installed Tesseract and language packs.
