@@ -1,0 +1,38 @@
+name: browser-e2e
+on:
+  push:
+    branches: [main, 'fix/vpp-0.5.3-deep-hardening']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: npm install --no-audit --no-fund
+      - name: Install real Chromium browser
+        run: npx playwright install --with-deps chromium
+      - name: Install FFmpeg and prepare real WebM sample
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -hide_banner -loglevel error -y -f lavfi -i color=c=blue:s=320x180:r=15:d=2 -t 2 -c:v libvpx -b:v 300k -an tests/e2e.webm
+      - name: Execute real browser E2E
+        run: npm run test:e2e
+      - name: Upload browser screenshots and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-results
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
