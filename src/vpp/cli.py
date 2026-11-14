@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+
+import yaml
 from pathlib import Path
 
 from .analyzer import analyze_scene
@@ -82,6 +84,10 @@ def cmd_import_prompt(args: argparse.Namespace) -> int:
     dump_scene(scene, args.output)
     report = analyze_scene(scene)
     print(f"Wrote {args.output} | {'PASS' if report.passed else 'FAIL'} | risk={report.risk_score}/100")
+    if not report.passed:
+        return 2
+    if not scene.get("parse_meta", {}).get("duration_explicit", False):
+        return 3
     return 0
 
 
@@ -96,7 +102,11 @@ def cmd_lint_prompt(args: argparse.Namespace) -> int:
             print(f"[{f.severity.upper()}] {f.rule_id}: {f.message}")
             if f.suggestion:
                 print(f"  -> {f.suggestion}")
-    return 0 if report.passed else 2
+    if not report.passed:
+        return 2
+    if any(f.rule_id in {"prompt.duration.inferred", "prompt.arabic.limited"} for f in report.findings):
+        return 3
+    return 0
 
 
 def cmd_optimize(args: argparse.Namespace) -> int:
@@ -137,6 +147,9 @@ def cmd_triple_review(args: argparse.Namespace) -> int:
 
 
 def cmd_jev_review(args: argparse.Namespace) -> int:
+    if not args.allow_remote_judge:
+        print("Remote judge is opt-in. Re-run with --allow-remote-judge to send prompt text and review metadata to the selected SDK/provider.", file=sys.stderr)
+        return 2
     text = _read_text(args.file)
     local = triple_review(text, provider=args.provider)
     client = None
@@ -303,6 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="Judge backend. 'jev' uses TypeSafe; openai/anthropic use TypeSafe's System One Adapter.")
     jev.add_argument("--model", help="Optional Jev model id; required for adapter engines")
     jev.add_argument("--json", action="store_true")
+    jev.add_argument("--allow-remote-judge", action="store_true",
+                     help="Explicitly consent to sending prompt contents to the selected judge/provider")
     jev.set_defaults(func=cmd_jev_review)
 
     sim = sub.add_parser("simulate", help="Estimate timing pressure for a Scene Spec")
@@ -326,7 +341,12 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    raise SystemExit(args.func(args))
+    try:
+        status = args.func(args)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, yaml.YAMLError) as exc:
+        print(f"VPP input error: {exc}", file=sys.stderr)
+        status = 2
+    raise SystemExit(status)
 
 
 if __name__ == "__main__":
