@@ -1,44 +1,19 @@
 # Roadmap
 
-## 0.1 — foundation
-- Scene Spec
-- deterministic linting
-- safe auto-fix
-- compact prompt compiler
-- CLI
-- zero-backend browser UI
+## Shipped
+- **0.1–0.3:** Scene Spec, free-text parser, deterministic checks and local browser review.
+- **0.4:** provider constitution, triple review, optional Jev judge, browser upload,
+  duration/aspect checks and eight sampled frames with human exact-text confirmation.
+- **0.5:** local `check-video` CLI with optional Tesseract OCR and offline ASR,
+  machine-readable JSON report and explicit human approval gate.
 
-## 0.2
-- free-form prompt importer
-- contradiction detector
-- short-scene simulator
-- constrained prompt optimizer
+## Not yet shipped / subject to validation
+- Browser-native automatic OCR and transcript checking without external services.
+- Provider API generation connectors (credentials, costs and provider approval required).
+- Large-scale benchmarking against real video outputs and human annotations.
+- Automated pronunciation grading, subtitle correctness and continuous video coverage.
+- Secure web judge proxy and professional multi-user workspace.
 
-## 0.3 — current
-- Gemini/Veo and Runway knowledge packs
-- research-pattern pack from VBench / T2V-CompBench / EvalCrafter categories
-- three conservative prompt candidates
-- three review rounds
-- adversarial critic
-- independent gatekeeper
-- hard-constraint coverage check
-- bundled regression failure memory
-- local browser Failure Memory
-- evidence links in the UI
-- Fast mode remains zero-API
-- Triple Verify remains zero-API
-
-## 0.4
-- upload generated video
-- frame sampling and visual QA
-- exact on-screen text verification
-- audio/transcript verification
-- VBench / VideoScore adapters where appropriate
-- provider-specific failure dashboard
-
-## 0.5
-- optional Promptfoo adapter
-- optional DSPy optimizer
-- optional local/remote semantic agents
-- explicit token budgets and circuit breakers
-- judge diversity / model-provider adapters
+## Release rule
+Do not claim video correctness from sample frames or a transcript alone.
+The automated status is evidence, not a certificate; content always requires human review.

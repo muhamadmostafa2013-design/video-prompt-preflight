@@ -15,6 +15,7 @@ from .prompt_analyzer import analyze_prompt
 from .simulator import simulate_scene
 from .triple_review import triple_review
 from .jev_judge import jev_review
+from .media_qa import MediaQAError, inspect_video
 
 PROVIDERS = [
     "generic",
@@ -215,6 +216,34 @@ def cmd_simulate(args: argparse.Namespace) -> int:
     return 0 if simulation.status != "overflow" else 2
 
 
+
+def cmd_check_video(args: argparse.Namespace) -> int:
+    try:
+        scene = load_scene(args.spec) if args.spec else {}
+        result = inspect_video(
+            args.video, scene, ocr=args.ocr, ocr_lang=args.ocr_lang,
+            asr_model=args.asr_model, frames=args.frames,
+        )
+    except (MediaQAError, ValueError, OSError) as exc:
+        print(f"Media QA error: {exc}", file=sys.stderr)
+        return 2
+    encoded = json.dumps(result, ensure_ascii=False, indent=2)
+    if args.output:
+        Path(args.output).write_text(encoded + "\n", encoding="utf-8")
+    if args.json:
+        print(encoded)
+    else:
+        print(f"{result['decision'].upper()} | {result['metadata']['duration_seconds']}s "
+              f"| {result['metadata']['width']}x{result['metadata']['height']}")
+        for check in result["checks"]:
+            print(f"[{check['status'].upper()}] {check['name']}: "
+                  f"{check.get('expected', check.get('reason', ''))}")
+        if args.output:
+            print(f"Evidence saved: {args.output}")
+    # 0 = metadata-only pass, 3 = requires human review, 2 = failed gate.
+    return {"pass": 0, "review": 3, "fail": 2}[result["decision"]]
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="vpp", description="Video Prompt Preflight")
     sub = p.add_subparsers(dest="command", required=True)
@@ -270,6 +299,17 @@ def build_parser() -> argparse.ArgumentParser:
     sim.add_argument("file")
     sim.add_argument("--json", action="store_true")
     sim.set_defaults(func=cmd_simulate)
+    media = sub.add_parser("check-video", help="Local video metadata QA + optional OCR/ASR evidence")
+    media.add_argument("video", help="Path to local video file")
+    media.add_argument("--spec", help="Scene Spec YAML/JSON containing duration, aspect and text")
+    media.add_argument("--ocr", action="store_true", help="OCR sampled frames via local Tesseract")
+    media.add_argument("--ocr-lang", default="eng", help="Installed Tesseract language packs, e.g. eng+deu")
+    media.add_argument("--asr-model", help="Directory of a PRE-DOWNLOADED faster-whisper model (offline only)")
+    media.add_argument("--frames", type=int, choices=range(1, 41), metavar="1..40", default=8)
+    media.add_argument("--json", action="store_true")
+    media.add_argument("-o", "--output", help="Save full structured QA evidence as JSON")
+    media.set_defaults(func=cmd_check_video)
+
     return p
 
 

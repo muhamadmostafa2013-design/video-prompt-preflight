@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — local video QA evidence
+- Added offline `vpp check-video` CLI for actual video duration/aspect/audio-stream checks.
+- Added optional sampled-frame OCR with locally installed Tesseract and language packs.
+- Added optional speech transcription through a PRE-DOWNLOADED local faster-whisper model.
+- Exportable JSON evidence; content checks always require human confirmation.
+- No remote uploads, prompt logging or automatic model downloads.
+- Added regression tests for missing audio, metadata mismatch, OCR uncertainty, offline model gating.
+- Synchronized package, VERSION, changelog, README and roadmap version references.
+
 ## 0.3.0
 - Added provider knowledge packs for Gemini/Veo and Runway.
 - Added research-backed failure-pattern pack using VBench, T2V-CompBench and EvalCrafter categories.
