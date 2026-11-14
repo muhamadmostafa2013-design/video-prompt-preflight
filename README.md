@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.4 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.5 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.4: local Triple Verify + optional Jev judge
+## v0.5: local Triple Verify + optional Jev judge and media QA
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -107,6 +107,7 @@ vpp lint-prompt <prompt.txt>
 vpp optimize <prompt.txt> -o optimized.txt --spec scene.yml
 vpp triple-review <prompt.txt> --provider veo
 vpp jev-review <prompt.txt> --provider veo
+vpp check-video <video.mp4> --spec <scene.yml> [--ocr] [--asr-model /local/model]
 ```
 
 ## Regression-first workflow
@@ -156,10 +157,24 @@ Free-form Prompt
 5. **Every failure becomes a test** — the system gets harder to break over time.
 6. **Local-first UI** — basic preflight should work without accounts, GPUs or API keys.
 
+## Local output inspection (v0.5 CLI)
+
+The browser already checks video duration and aspect ratio and shows eight frame samples for manual exact-text review. The new optional **offline CLI** adds sampled-frame OCR and local speech transcription evidence. Review of words, subtitles, pronunciation and timing is still required by a human.
+
+```bash
+pip install -e '.[dev,media-ocr]'
+# install ffmpeg, ffprobe, Tesseract + desired language data locally
+vpp check-video my-video.mp4 --spec examples/ver_scene_1.yml --ocr --ocr-lang eng+deu --json -o qa.json
+```
+
+Optional local-only ASR needs the `media-asr` extra and a pre-downloaded local faster-whisper model directory. No cloud API or implicit model download. See [Media QA guide](docs/MEDIA_QA.md).
+
 ## Roadmap
 
-- **v0.4 (current):** multi-provider constitution, A/B/C local review, Output QA, exact-text regression protection, optional Jev candidate judge + semantic gate.
-- **v0.5:** secure web judge proxy, deeper post-generation audio/visual QA, Promptfoo/DSPy/local-model adapters and explicit token budgets.
+- **v0.5 (current):** multi-provider preflight, three local review rounds, browser metadata/frames and opt-in local OCR/ASR evidence CLI.
+- **Next:** independent real-video benchmarks, accessible manual QA workflow, secure optional judge proxy, provider adapters and cost budgets.
+- Generation APIs are deliberately not bundled: generator account credentials, per-video billing and explicit deployment permissions are needed.
+
 
 ## License
 
