@@ -47,7 +47,7 @@ def probe_video(path: str | Path) -> dict:
     _need("ffprobe")
     data = json.loads(_command([
         "ffprobe", "-v", "error", "-show_streams", "-show_format",
-        "-of", "json", str(video)
+        "-of", "json", "-i", str(video)
     ]))
     streams = data.get("streams", [])
     images = [s for s in streams if s.get("codec_type") == "video"]
@@ -61,11 +61,28 @@ def probe_video(path: str | Path) -> dict:
         raise MediaQAError("Missing video duration or dimensions.") from exc
     if not 0 < duration <= 86400 or width < 1 or height < 1:
         raise MediaQAError("Invalid video duration or dimensions.")
+    # Display ratio accounts for non-square pixels and rotation metadata.
+    sar = str(stream.get("sample_aspect_ratio") or "1:1")
+    ratio = width / height
+    try:
+        num, den = (float(x) for x in sar.split(":"))
+        if num > 0 and den > 0:
+            ratio *= num / den
+    except (ValueError, ZeroDivisionError):
+        pass
+    rotation = int(float((stream.get("tags") or {}).get("rotate") or 0))
+    for item in stream.get("side_data_list", []) or []:
+        if "rotation" in item:
+            rotation = int(float(item["rotation"]))
+    if abs(rotation) % 180 == 90:
+        ratio = 1 / ratio
     return {
         "duration_seconds": round(duration, 3),
         "width": width,
         "height": height,
-        "aspect_ratio": round(width / height, 5),
+        "aspect_ratio": round(ratio, 5),
+        "rotation_degrees": rotation,
+        "sample_aspect_ratio": sar,
         "has_audio": any(s.get("codec_type") == "audio" for s in streams),
     }
 
