@@ -2,6 +2,7 @@ window.VPPOutputQA = (() => {
   const $ = id => document.getElementById(id);
   let options = {};
   let current = null;
+  let previewUrl = null;
 
   const readFailures = () => {
     try {
@@ -128,7 +129,7 @@ window.VPPOutputQA = (() => {
   const renderChecklist = scene => {
     const states = [
       ...(scene.screen_text || []),
-      "No unapproved on-screen text, Arabic writing, subtitles, or unexpected overlays anywhere in this video"
+      "No unapproved on-screen text, subtitles, or unexpected overlays anywhere in this video"
     ];
     const el = $("textChecklist");
     if (!states.length) {
@@ -175,7 +176,16 @@ window.VPPOutputQA = (() => {
 
   const analyzeFile = async file => {
     const scene = typeof options.getScene === "function" ? options.getScene() : {};
-    if (!file || file.size > 512 * 1024 * 1024) {
+    current = null;
+    if(previewUrl){URL.revokeObjectURL(previewUrl);previewUrl=null;}
+    const preview=$("qaVideoPreview");
+    if(preview){
+      if(typeof preview.pause==="function")preview.pause();
+      preview.removeAttribute?.("src");
+      if(typeof preview.load==="function")preview.load();
+      preview.hidden=true;
+    }
+    if (!file || !Number.isFinite(file.size) || file.size === 0 || file.size > 512 * 1024 * 1024) {
       const panel = $("videoQaPanel");
       panel.hidden = false;
       $("videoQaStatus").textContent = "VIDEO TOO LARGE";
@@ -205,16 +215,21 @@ window.VPPOutputQA = (() => {
 
       const expectedDuration = Number(scene.duration_seconds || 10);
       const actualDuration = Number(video.duration || 0);
-      const durationOk = Math.abs(actualDuration - expectedDuration) <= 0.35;
+      if(!Number.isFinite(actualDuration)||actualDuration<=0 ||
+          !video.videoWidth||!video.videoHeight)
+        throw new Error("Invalid or unsupported video duration/dimensions.");
+      const durationKnown=scene.parse_meta?.duration_explicit!==false && !!scene.duration_seconds;
+      const durationOk = durationKnown && Math.abs(actualDuration - expectedDuration) <= 0.35;
 
       const expectedAspect = parseAspect(scene.aspect_ratio || "9:16");
+      const aspectKnown=scene.parse_meta?.aspect_explicit!==false && !!scene.aspect_ratio;
       const actualAspect = video.videoWidth / Math.max(1, video.videoHeight);
       const aspectError = Math.abs(actualAspect - expectedAspect) / expectedAspect;
-      const aspectOk = aspectError <= 0.07;
+      const aspectOk = aspectKnown && aspectError <= 0.07;
 
       const frames = await sampleFrames(video, 8);
       current = {
-        reviewItems: [...(scene.screen_text || []), "No unapproved on-screen text, Arabic writing, subtitles, or unexpected overlays anywhere in this video"],
+        reviewItems: [...(scene.screen_text || []), "No unapproved on-screen text, subtitles, or unexpected overlays anywhere in this video"],
         fileName:file.name,
         scene,
         actualDuration,
@@ -223,13 +238,17 @@ window.VPPOutputQA = (() => {
         height:video.videoHeight,
         durationOk,
         aspectOk,
+        durationKnown,
+        aspectKnown,
         autoPass:durationOk && aspectOk,
         textReview:{}
       };
 
       const autoBits = [
-        badge(durationOk, `${actualDuration.toFixed(2)}s duration`, `${actualDuration.toFixed(2)}s vs ${expectedDuration}s`),
-        badge(aspectOk, `${video.videoWidth}×${video.videoHeight}`, `${video.videoWidth}×${video.videoHeight} ratio`)
+        durationKnown ? badge(durationOk, `${actualDuration.toFixed(2)}s duration`, `${actualDuration.toFixed(2)}s vs ${expectedDuration}s`) :
+          '<span class="qa-badge qa-note">Duration not specified: confirm manually</span>',
+        aspectKnown ? badge(aspectOk, `${video.videoWidth}×${video.videoHeight}`, `${video.videoWidth}×${video.videoHeight} ratio`) :
+          '<span class="qa-badge qa-note">Aspect not specified: confirm manually</span>'
       ];
 
       $("videoQaSummary").innerHTML =
@@ -237,15 +256,16 @@ window.VPPOutputQA = (() => {
 
       renderFrames(frames);
       renderChecklist(scene);
+      if(preview){preview.src=url;preview.hidden=false;previewUrl=url;}
 
-      if (!durationOk) {
+      if (durationKnown && !durationOk) {
         saveFailure(
           "timing",
           `Generated video duration was ${actualDuration.toFixed(2)}s instead of ${expectedDuration}s.`,
           `Keep generated duration within ±0.35s of ${expectedDuration}s.`
         );
       }
-      if (!aspectOk) {
+      if (aspectKnown && !aspectOk) {
         saveFailure(
           "aspect_ratio",
           `Generated video resolution ${video.videoWidth}×${video.videoHeight} did not match ${scene.aspect_ratio || "9:16"} closely.`,
@@ -257,7 +277,9 @@ window.VPPOutputQA = (() => {
       $("videoQaStatus").className = "fail";
       $("videoQaSummary").textContent = err?.message || "The browser could not inspect this video.";
     } finally {
-      URL.revokeObjectURL(url);
+      // Keep this blob alive while the user plays the whole video; release
+      // when another file is chosen or when the tab is closed.
+      if(previewUrl!==url)URL.revokeObjectURL(url);
     }
   };
 
