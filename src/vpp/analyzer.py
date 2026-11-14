@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import math
 
 from .models import Finding, Report
 from .text import contains_arabic, word_count
@@ -51,17 +52,28 @@ def analyze_scene(scene: dict) -> Report:
             _add(report, "timeline.overloaded", "warning", f"{len(events)} timeline events may overload a {duration}s scene.", "Reduce actions/transitions or split into another scene.", 15)
 
         total = 0.0
+        previous_end = 0.0
         for event in events:
             try:
                 seconds = float(event.get("seconds", 0))
                 if "start" in event:
                     start = float(event["start"])
                     end = float(event.get("end", start + seconds))
-                    if start < 0 or end <= start:
+                    if not all(math.isfinite(x) for x in (start, end, seconds)):
+                        raise ValueError("non-finite event interval")
+                    if start < 0 or end <= start or seconds <= 0 or abs((end - start) - seconds) > .05:
                         raise ValueError("invalid interval")
+                    if start < previous_end - .05:
+                        _add(report, "timeline.overlap", "error",
+                             f"Timeline overlaps: {start:g}s begins before prior end {previous_end:g}s.",
+                             "Use nonoverlapping chronological intervals, or split parallel actions explicitly.", 35)
                     total = max(total, end)
+                    previous_end = max(previous_end, end)
                 else:
+                    if not math.isfinite(seconds) or seconds <= 0:
+                        raise ValueError("invalid event length")
                     total += seconds
+                    previous_end = total
             except (TypeError, ValueError, AttributeError):
                 _add(report, "timeline.invalid", "error", "Each timeline event needs a valid numeric interval.", "Fix each timeline interval.", 25)
                 break
