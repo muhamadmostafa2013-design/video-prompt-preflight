@@ -3,7 +3,13 @@ from argparse import Namespace
 
 import pytest
 
-from vpp.cli import build_parser, cmd_jev_review, cmd_import_prompt, cmd_lint_prompt, main
+from vpp.cli import (
+    build_parser,
+    cmd_import_prompt,
+    cmd_jev_review,
+    cmd_lint_prompt,
+    main,
+)
 
 
 def test_jev_refuses_remote_prompt_transfer_without_explicit_opt_in(capsys):
