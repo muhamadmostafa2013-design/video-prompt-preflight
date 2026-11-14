@@ -1,41 +1,41 @@
 # Offline media QA — v0.5
 
 The browser's existing Output QA checks video metadata, samples eight frames and
-asks a person to confirm on-screen text. The optional \`check-video\` CLI adds
+asks a person to confirm on-screen text. The optional `check-video` CLI adds
 **local** OCR and ASR evidence without a cloud account. Neither OCR nor speech
 recognition can guarantee spelling, subtitles, accent or pronunciation.
 
 ## Install
 
-\`\`\`bash
+```bash
 pip install -e '.[dev,media-ocr]'
 # Ubuntu/Debian:
 sudo apt install ffmpeg tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
 # Windows/macOS: install ffmpeg/ffprobe and Tesseract on PATH; add desired language packs.
-\`\`\`
+```
 
 Local metadata-only mode needs **ffprobe** but no Python extras:
 
-\`\`\`bash
+```bash
 vpp check-video video.mp4 --spec examples/ver_scene_1.yml --json -o qa-report.json
-\`\`\`
+```
 
 Add OCR sampled at eight points (1–40 configurable):
 
-\`\`\`bash
+```bash
 vpp check-video video.mp4 --spec examples/ver_scene_1.yml --ocr --ocr-lang eng+deu --frames 16 --json -o qa-report.json
-\`\`\`
+```
 
 ### Optional offline speech evidence
 
-\`\`\`bash
+```bash
 pip install -e '.[media-asr]'
 vpp check-video video.mp4 --spec examples/ver_scene_1.yml \
   --asr-model /absolute/local/path/to/ctranslate2-whisper-model --json -o qa-report.json
-\`\`\`
+```
 
 **The model directory must already exist locally.** A model name such as
-\`small\` is rejected to avoid an implicit download. No microphone access,
+`small` is rejected to avoid an implicit download. No microphone access,
 network API call or persistent raw audio is involved. Speech output is
 transcription evidence only; the reviewer must compare it to the script by
 listening. Language/accent/pronunciation quality is **not** automatically certified.
@@ -48,8 +48,8 @@ listening. Language/accent/pronunciation quality is **not** automatically certif
 | review | 3 | OCR/ASR evidence or requested text/speech still requires human verification |
 | fail | 2 | Video metadata/audio requirement fails, or command/dependency failed |
 
-Never publish a video with a \`review\` decision without viewing and listening.
-The \`--json\` output includes metadata, sampled-frame OCR text, exact words
+Never publish a video with a `review` decision without viewing and listening.
+The `--json` output includes metadata, sampled-frame OCR text, exact words
 observed/missed, available transcripts and explicit limitations. If OCR misses a
 word it might appear between samples: the result is **review**, not a false
 claim of absence. OCR can also mistake words: a detected match is not final
