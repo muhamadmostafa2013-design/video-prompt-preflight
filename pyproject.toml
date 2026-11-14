@@ -42,4 +42,4 @@ where = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-"vpp" = ["knowledge_packs/*.yml"]
+"vpp" = ["knowledge_packs/*.yml", "failures/*.json"]
