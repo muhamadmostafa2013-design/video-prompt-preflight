@@ -2,22 +2,24 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
+from importlib import resources
 
-ROOT = Path(__file__).resolve().parents[2]
-FAILURES_DIR = ROOT / "failures"
 _MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
 
 
 def load_failure_memory() -> list[dict]:
     out = []
-    if not FAILURES_DIR.exists():
-        return out
-    for path in sorted(FAILURES_DIR.glob("*.json")):
-        try:
-            out.append(json.loads(path.read_text(encoding="utf-8")))
-        except (ValueError, OSError):
-            continue
+    try:
+        directory = resources.files("vpp").joinpath("failures")
+        paths = sorted((p for p in directory.iterdir() if p.name.endswith(".json")),
+                       key=lambda p: p.name)
+        for path in paths:
+            try:
+                out.append(json.loads(path.read_text(encoding="utf-8")))
+            except (ValueError, OSError):
+                continue
+    except (FileNotFoundError, NotADirectoryError):
+        return []
     return out
 
 
