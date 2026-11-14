@@ -15,8 +15,8 @@ for(const c of corpus){
     if("no_music" in c) assert.equal(scene.rules.no_background_music,c.no_music);
     if("no_subtitles" in c) assert.equal(scene.rules.no_auto_subtitles,c.no_subtitles);
     if("timeline_starts" in c){
-      assert.deepEqual(scene.timeline.map(e=>e.start),c.timeline_starts);
-      assert.deepEqual(scene.timeline.map(e=>e.end),c.timeline_ends);
+      assert.deepEqual(Array.from(scene.timeline,e=>e.start),c.timeline_starts);
+      assert.deepEqual(Array.from(scene.timeline,e=>e.end),c.timeline_ends);
     }
     for(const field of ["expect_finding","expect_finding_secondary"]){
       if(field in c)assert.ok(ids.has(c[field]),"Missing "+c[field]);
