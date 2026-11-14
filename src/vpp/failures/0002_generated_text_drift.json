@@ -1,0 +1,10 @@
+{
+  "id": "failure-0002",
+  "provider": "generic",
+  "category": "exact_text",
+  "title": "Generated on-screen text drifts from requested spelling",
+  "observed": "The video model invents or corrupts on-screen educational text.",
+  "expected": "Only whitelisted exact strings appear; optional subtitles are added in post-production.",
+  "prevention_rules": ["strict_text_whitelist", "max_screen_text_items", "no_auto_subtitles"],
+  "regression_source": "real-world educational video workflow"
+}
