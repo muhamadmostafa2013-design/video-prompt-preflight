@@ -121,3 +121,19 @@ def test_real_video_metadata_probe_and_gate(tmp_path):
     assert good["decision"] == "pass"
     wrong = media_qa.inspect_video(video, {"duration_seconds": 3})
     assert wrong["decision"] == "fail"
+
+def test_missing_speech_audio_fails_even_without_asr(monkeypatch):
+    monkeypatch.setattr(media_qa, "probe_video", lambda _: {**META, "has_audio": False})
+    report = media_qa.inspect_video("any.mp4", SCENE)
+    assert report["decision"] == "fail"
+    assert any(x["name"] == "expected_speech_audio" for x in report["checks"])
+
+
+def test_ocr_does_not_match_word_inside_another_word(monkeypatch):
+    monkeypatch.setattr(media_qa, "probe_video", lambda _: dict(META))
+    monkeypatch.setattr(media_qa, "sample_frames",
+                        lambda path, duration, count, directory: [{"seconds": 3, "path": "sample"}])
+    monkeypatch.setattr(media_qa, "ocr_frames",
+                        lambda frames, lang: [{"seconds": 3, "text": "auflaufen"}])
+    output = media_qa.inspect_video("any.mp4", {"screen_text": ["laufen"]}, ocr=True)
+    assert output["checks"][0]["status"] == "review"
