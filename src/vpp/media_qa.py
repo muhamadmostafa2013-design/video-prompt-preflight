@@ -46,7 +46,7 @@ def probe_video(path: str | Path) -> dict:
         raise MediaQAError(f"Video file does not exist: {video}")
     _need("ffprobe")
     data = json.loads(_command([
-        "ffprobe", "-v", "error", "-show_streams", "-show_format",
+        "ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format",
         "-of", "json", "-i", str(video)
     ]))
     streams = data.get("streams", [])
@@ -108,6 +108,7 @@ def sample_frames(path: str | Path, duration: float, count: int, directory: str 
         out = Path(directory) / f"frame-{i + 1:02d}.png"
         _command([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{at:.3f}",
+            "-protocol_whitelist", "file,pipe",
             "-i", str(path), "-frames:v", "1", "-vf", "scale=960:-2",
             "-y", str(out)
         ], timeout=40)
@@ -155,7 +156,7 @@ def detect_silent_audio(path: str | Path, max_seconds: float = 15.0) -> dict:
     _need("ffmpeg")
     command = [
         "ffmpeg", "-hide_banner", "-loglevel", "info",
-        "-i", str(path), "-t", str(max_seconds), "-vn",
+        "-protocol_whitelist", "file,pipe", "-i", str(path), "-t", str(max_seconds), "-vn",
         "-af", "volumedetect", "-f", "null", "-"
     ]
     try:
