@@ -413,6 +413,39 @@ def jev_review(
     When a caller passes one client, both requests reuse it. The candidate
     ranking remains deterministic once Jev has returned its probabilities.
     """
+    # Absolute rule: a probabilistic judge cannot overrule deterministic
+    # blocking errors or an overflowed scene. Do not send a rejected prompt
+    # to an external service merely to confirm a rejection.
+    if not review_result.get("passed", False):
+        alternatives = (review_result.get("rounds") or [{}])[0].get("candidates") or []
+        first = alternatives[0] if alternatives else {}
+        winner = {
+            "name": first.get("name", "BLOCKED"),
+            "utility": 0.0,
+            "hard_constraints_probability": 0.0,
+            "provider_fit_probability": 0.0,
+            "ambiguity_probability": 1.0,
+            "risk_score": 4.0,
+        }
+        gate = {
+            "decision": "block",
+            "risk_score": 4.0,
+            "dominant_risk": "deterministic_preflight",
+            "confidence": 1.0,
+        }
+        return {
+            "candidate_judge": {
+                "engine": "deterministic_block", "winner": winner,
+                "winner_prompt": review_result.get("final_prompt", ""),
+                "ranking": [], "skipped_reason": "Local preflight failed",
+            },
+            "semantic_gate": {
+                "engine": "deterministic_block", "decision": gate,
+                "skipped_reason": "A semantic judge cannot override local blocking failures",
+            },
+            "final_prompt": review_result.get("final_prompt", ""),
+            "decision": "block",
+        }
     client, owns_client, _, _, _ = _client_and_types(client)
     try:
         ranking = jev_rank_candidates(

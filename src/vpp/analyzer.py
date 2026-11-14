@@ -53,9 +53,17 @@ def analyze_scene(scene: dict) -> Report:
         total = 0.0
         for event in events:
             try:
-                total += float(event.get("seconds", 0))
+                seconds = float(event.get("seconds", 0))
+                if "start" in event:
+                    start = float(event["start"])
+                    end = float(event.get("end", start + seconds))
+                    if start < 0 or end <= start:
+                        raise ValueError("invalid interval")
+                    total = max(total, end)
+                else:
+                    total += seconds
             except (TypeError, ValueError, AttributeError):
-                _add(report, "timeline.invalid", "error", "Each timeline event needs a numeric seconds value.", "Add seconds to every event.", 25)
+                _add(report, "timeline.invalid", "error", "Each timeline event needs a valid numeric interval.", "Fix each timeline interval.", 25)
                 break
         if total and duration and total > float(duration) + 0.05:
             _add(report, "timeline.overflow", "error", f"Timeline totals {total:.1f}s but scene is {duration}s.", "Shorten or remove timeline events.", 35)

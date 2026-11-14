@@ -7,7 +7,7 @@ from .text import contains_arabic
 
 _DURATION_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b", re.I)
 _ASPECT_RE = re.compile(r"\b(9\s*:\s*16|16\s*:\s*9|1\s*:\s*1|4\s*:\s*5)\b")
-_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*s\b", re.I)
+_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)", re.I)
 _QUOTED_RE = re.compile(r'["“”](.*?)["“”]')
 
 _MARKERS = {
@@ -110,7 +110,10 @@ def _extract_screen_text(text: str) -> list[str]:
         if capture:
             capture_budget -= 1
             candidate = line.strip('"“”')
-            if _looks_like_exact_text(candidate):
+            if _looks_like_exact_text(candidate) and not re.search(
+                r"\b(?:lighting|cinematic|camera|background|studio|vertical|portrait|audio|music|subtitles)\b",
+                candidate, re.I
+            ):
                 out.append(candidate)
             if capture_budget <= 0 or low.startswith(_STOP_PREFIXES):
                 capture = False
@@ -142,13 +145,26 @@ def _extract_timeline(text: str, duration: float) -> list[dict]:
         if end <= start:
             continue
         action = line[m.end():].lstrip(": -–—").strip() or "unspecified action"
-        events.append({"seconds": round(end - start, 3), "action": action})
+        events.append({"start": start, "end": end, "seconds": round(end - start, 3), "action": action})
     return events
 
 
 def parse_prompt(text: str) -> dict:
     """Heuristically convert a free-form video prompt into a conservative Scene Spec."""
-    durations = [float(x) for x in _DURATION_RE.findall(text)]
+    # Global scene durations must not be confused with individual hold/action times.
+    durations = []
+    for match in _DURATION_RE.finditer(text):
+        beginning = text.rfind("\n", 0, match.start()) + 1
+        line_prefix = text[beginning:match.start()].lower()
+        line_suffix = text[match.end():text.find("\n", match.end()) if "\n" in text[match.end():] else len(text)].lower()
+        if re.search(r"\b(?:hold|wait|pause|delay|after|before)\s+(?:for\s+)?$", line_prefix):
+            continue
+        if re.search(r"\d+\s*[-–—]\s*$", line_prefix):
+            continue
+        if (re.search(r"\b(?:create|make|generate|video|scene|clip|duration|length|total|entire|whole)\b", line_prefix)
+                or re.match(r"\s*(?:long\b|total\b|video\b|clip\b|scene\b)", line_suffix)
+                or not line_prefix.strip()):
+            durations.append(float(match.group(1)))
     duration = durations[0] if durations else 10.0
     aspect_match = _ASPECT_RE.search(text)
     aspect = aspect_match.group(1).replace(" ", "") if aspect_match else "9:16"
@@ -196,5 +212,6 @@ def parse_prompt(text: str) -> dict:
         },
         "forbidden": [],
         "source_prompt": text,
-        "parse_meta": {"duration_mentions": durations, "parser": "deterministic-v0.3"},
+        "parse_meta": {"duration_mentions": durations, "duration_explicit": bool(durations),
+                       "aspect_explicit": bool(aspect_match), "parser": "deterministic-v0.5.2"},
     }

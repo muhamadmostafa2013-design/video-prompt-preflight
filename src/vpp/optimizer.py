@@ -11,6 +11,8 @@ _AMBIGUOUS_CONFLICTS = {
     "prompt.music.conflict",
     "prompt.subtitle.conflict",
     "prompt.audio.conflict",
+    "prompt.duration.inferred",
+    "prompt.arabic.limited",
 }
 
 
@@ -29,7 +31,11 @@ def optimize_prompt(text: str) -> dict:
     conflict_ids = [f.rule_id for f in before.findings if f.rule_id in _AMBIGUOUS_CONFLICTS]
     decisions: list[str] = []
     if "prompt.duration.conflict" in conflict_ids:
-        decisions.append(f"Kept the first explicit duration mention: {fixed.get('duration_seconds')}s.")
+        decisions.append(f"Conflicting total scene durations: provisional {fixed.get('duration_seconds')}s; human approval required, NOT a resolved fact.")
+    if "prompt.duration.inferred" in conflict_ids:
+        decisions.append("No explicit scene duration detected; 10s is a placeholder requiring confirmation.")
+    if "prompt.arabic.limited" in conflict_ids:
+        decisions.append("Arabic-only free-form instructions require independent manual verification.")
     if "prompt.music.conflict" in conflict_ids:
         decisions.append("Applied the stricter audio constraint: no background music.")
     if "prompt.subtitle.conflict" in conflict_ids:

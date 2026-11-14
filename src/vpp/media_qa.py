@@ -46,8 +46,8 @@ def probe_video(path: str | Path) -> dict:
         raise MediaQAError(f"Video file does not exist: {video}")
     _need("ffprobe")
     data = json.loads(_command([
-        "ffprobe", "-v", "error", "-show_streams", "-show_format",
-        "-of", "json", str(video)
+        "ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-show_streams", "-show_format",
+        "-of", "json", "-i", str(video)
     ]))
     streams = data.get("streams", [])
     images = [s for s in streams if s.get("codec_type") == "video"]
@@ -61,11 +61,28 @@ def probe_video(path: str | Path) -> dict:
         raise MediaQAError("Missing video duration or dimensions.") from exc
     if not 0 < duration <= 86400 or width < 1 or height < 1:
         raise MediaQAError("Invalid video duration or dimensions.")
+    # Display ratio accounts for non-square pixels and rotation metadata.
+    sar = str(stream.get("sample_aspect_ratio") or "1:1")
+    ratio = width / height
+    try:
+        num, den = (float(x) for x in sar.split(":"))
+        if num > 0 and den > 0:
+            ratio *= num / den
+    except (ValueError, ZeroDivisionError):
+        pass
+    rotation = int(float((stream.get("tags") or {}).get("rotate") or 0))
+    for item in stream.get("side_data_list", []) or []:
+        if "rotation" in item:
+            rotation = int(float(item["rotation"]))
+    if abs(rotation) % 180 == 90:
+        ratio = 1 / ratio
     return {
         "duration_seconds": round(duration, 3),
         "width": width,
         "height": height,
-        "aspect_ratio": round(width / height, 5),
+        "aspect_ratio": round(ratio, 5),
+        "rotation_degrees": rotation,
+        "sample_aspect_ratio": sar,
         "has_audio": any(s.get("codec_type") == "audio" for s in streams),
     }
 
@@ -91,6 +108,7 @@ def sample_frames(path: str | Path, duration: float, count: int, directory: str 
         out = Path(directory) / f"frame-{i + 1:02d}.png"
         _command([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{at:.3f}",
+            "-protocol_whitelist", "file,pipe",
             "-i", str(path), "-frames:v", "1", "-vf", "scale=960:-2",
             "-y", str(out)
         ], timeout=40)
@@ -131,6 +149,29 @@ def transcript_local(path: str | Path, model_path: str | Path) -> str:
     model = WhisperModel(str(model_dir), device="cpu", compute_type="int8", local_files_only=True)
     segments, _ = model.transcribe(str(path), beam_size=1, vad_filter=True)
     return " ".join(segment.text.strip() for segment in segments).strip()
+
+
+def detect_silent_audio(path: str | Path, max_seconds: float = 15.0) -> dict:
+    """Measure sampled peak volume; not a substitute for validating speech content."""
+    _need("ffmpeg")
+    command = [
+        "ffmpeg", "-hide_banner", "-loglevel", "info",
+        "-protocol_whitelist", "file,pipe", "-i", str(path), "-t", str(max_seconds), "-vn",
+        "-af", "volumedetect", "-f", "null", "-"
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=45, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise MediaQAError(f"Cannot analyze audio level: {exc}") from exc
+    if result.returncode:
+        raise MediaQAError(f"Audio decoder failed: {result.stderr[-220:]}")
+    match = re.search(r"max_volume:\s*(-?inf|-?\d+(?:\.\d+)?)\s*dB", result.stderr)
+    if not match:
+        raise MediaQAError("No peak-volume evidence available in this audio stream.")
+    peak = float(match.group(1))
+    return {"max_volume_db": peak if peak != float("-inf") else None,
+            "sampled_seconds": max_seconds, "silent": peak == float("-inf") or peak < -50}
 
 
 def inspect_video(
@@ -176,7 +217,8 @@ def inspect_video(
 
     frame_evidence: list[dict] = []
     transcript: str | None = None
-    if ocr and words:
+    needs_visual_policy = bool((scene.get("rules") or {}).get("no_arabic_on_screen"))
+    if ocr and (words or needs_visual_policy):
         with tempfile.TemporaryDirectory(prefix="vpp-qa-") as directory:
             frame_evidence = ocr_frames(
                 sample_frames(path, metadata["duration_seconds"], frames, directory), ocr_lang
@@ -187,6 +229,21 @@ def inspect_video(
             checks.append({"name": "exact_screen_text", "expected": word,
                            "status": "observed" if matched else "review",
                            "sampled_at_seconds": matched})
+        if needs_visual_policy:
+            has_arabic = any(re.search(r"[\u0600-\u06ff]", frame["text"])
+                             for frame in frame_evidence)
+            checks.append({"name": "forbidden_arabic_visual", "status": "review",
+                           "reason": "Arabic glyphs observed in OCR sample; confirm manually"
+                           if has_arabic else "No Arabic observed in sampled OCR; still needs full-video review",
+                           "sampled_arabic": has_arabic})
+        whitelist = scene.get("text_whitelist") or []
+        if whitelist:
+            allowed_tokens = set(_norm(" ".join(map(str, whitelist))).split())
+            observed_tokens = set(_norm(" ".join(f["text"] for f in frame_evidence)).split())
+            unmatched = sorted(observed_tokens - allowed_tokens)[:40]
+            checks.append({"name": "ocr_whitelist_review", "status": "review",
+                           "unmatched_ocr_tokens": unmatched,
+                           "reason": "OCR extras are only review signals, not certified violations"})
     elif words:
         checks.append({"name": "exact_screen_text", "status": "review",
                        "reason": "OCR not enabled; inspect all text states manually"})
@@ -194,6 +251,23 @@ def inspect_video(
     if required_speech and not metadata["has_audio"]:
         checks.append({"name": "expected_speech_audio", "status": "fail",
                        "reason": "Scene requires speech but no audio stream is present"})
+    elif required_speech and metadata["has_audio"]:
+        if shutil.which("ffmpeg") and Path(path).is_file():
+            try:
+                volume = detect_silent_audio(path, max_seconds=min(15.0, metadata["duration_seconds"]))
+                if volume["silent"]:
+                    full_sample = metadata["duration_seconds"] <= 15.0
+                    checks.append({
+                        "name": "audio_level", "status": "fail" if full_sample else "review",
+                        "reason": "Silent/near-silent sampled audio; cannot confirm required speech",
+                        "volume": volume,
+                    })
+            except MediaQAError:
+                checks.append({"name": "audio_level", "status": "review",
+                               "reason": "Audio level could not be measured reliably"})
+        else:
+            checks.append({"name": "audio_level", "status": "review",
+                           "reason": "Audio level not checked (FFmpeg unavailable or media not mounted)"})
 
     if asr_model is not None:
         if not metadata["has_audio"]:

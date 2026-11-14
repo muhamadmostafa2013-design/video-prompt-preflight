@@ -1,0 +1,10 @@
+{
+  "id": "failure-0001",
+  "provider": "veo",
+  "category": "multilingual_audio",
+  "title": "Arabic presenter mispronounces German vocabulary",
+  "observed": "Generated presenter speaks Arabic and German in the same voice, with unreliable German pronunciation.",
+  "expected": "Arabic presenter speaks Arabic only; German pronunciation is a separate verified voice or post-production audio.",
+  "prevention_rules": ["presenter_arabic_only", "explicit_voice_ownership", "no_german_by_presenter"],
+  "regression_source": "real-world educational video workflow"
+}

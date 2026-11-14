@@ -6,13 +6,19 @@ window.VPPOutputQA = (() => {
   const readFailures = () => {
     try {
       const items = JSON.parse(localStorage.getItem("vpp_failures") || "[]");
-      return Array.isArray(items) ? items : [];
+      return Array.isArray(items) ? items.filter(x => x && typeof x === "object") : [];
     } catch { return []; }
   };
 
   const writeFailures = items => {
-    localStorage.setItem("vpp_failures", JSON.stringify(items));
-    if (typeof options.onMemoryChanged === "function") options.onMemoryChanged();
+    try {
+      localStorage.setItem("vpp_failures", JSON.stringify(items));
+      if (typeof options.onMemoryChanged === "function") options.onMemoryChanged();
+      return true;
+    } catch {
+      // Private browsing or full storage must not derail video inspection.
+      return false;
+    }
   };
 
   const saveFailure = (category, observed, expected) => {
@@ -82,13 +88,15 @@ window.VPPOutputQA = (() => {
 
   const updateManualSummary = () => {
     if (!current) return;
-    const states = current.scene.screen_text || [];
+    const states = current.reviewItems;
     const reviewed = Object.keys(current.textReview).length;
     const failed = Object.values(current.textReview).filter(v => v === "fail").length;
     const passed = Object.values(current.textReview).filter(v => v === "pass").length;
 
     if (!states.length) {
-      $("textQaSummary").textContent = "No exact screen-text states were requested in this prompt.";
+      $("textQaSummary").textContent = "No manual content checks requested.";
+      $("videoQaStatus").textContent = current.autoPass ? "METADATA PASS · CONTENT UNVERIFIED" : "CUT! METADATA ISSUE ✋";
+      $("videoQaStatus").className = current.autoPass ? "warn" : "fail";
       return;
     }
 
@@ -105,8 +113,8 @@ window.VPPOutputQA = (() => {
       $("videoQaStatus").className = "fail";
     } else {
       $("textQaSummary").textContent = `Exact-text review passed: ${passed}/${states.length} states confirmed.`;
-      $("videoQaStatus").textContent = current.autoPass ? "OUTPUT GREEN LIGHT 🎬" : "TEXT PASS · METADATA NEEDS FIX";
-      $("videoQaStatus").className = current.autoPass ? "pass" : "warn";
+      $("videoQaStatus").textContent = current.autoPass ? "MANUAL CHECKS CONFIRMED · VERIFY SOUND 🎬" : "TEXT PASS · METADATA NEEDS FIX";
+      $("videoQaStatus").className = "warn";
     }
   };
 
@@ -118,7 +126,10 @@ window.VPPOutputQA = (() => {
     .replaceAll("'","&#039;");
 
   const renderChecklist = scene => {
-    const states = scene.screen_text || [];
+    const states = [
+      ...(scene.screen_text || []),
+      "No unapproved on-screen text, Arabic writing, subtitles, or unexpected overlays anywhere in this video"
+    ];
     const el = $("textChecklist");
     if (!states.length) {
       el.innerHTML = `<p class="micro">No exact text states to review for this scene.</p>`;
@@ -128,7 +139,7 @@ window.VPPOutputQA = (() => {
 
     el.innerHTML = states.map((text, i) => `
       <div class="text-check-row" data-index="${i}">
-        <div><small>Expected text state</small><strong>${escapeHtml(text)}</strong></div>
+        <div><small>${i === states.length - 1 ? "Manual whole-video whitelist check" : "Expected text state"}</small><strong>${escapeHtml(text)}</strong></div>
         <div class="text-check-actions">
           <button type="button" class="qa-choice" data-result="pass" data-index="${i}" aria-label="Mark ${escapeHtml(text)} correct">✓</button>
           <button type="button" class="qa-choice" data-result="fail" data-index="${i}" aria-label="Mark ${escapeHtml(text)} wrong or missing">×</button>
@@ -203,6 +214,7 @@ window.VPPOutputQA = (() => {
 
       const frames = await sampleFrames(video, 8);
       current = {
+        reviewItems: [...(scene.screen_text || []), "No unapproved on-screen text, Arabic writing, subtitles, or unexpected overlays anywhere in this video"],
         fileName:file.name,
         scene,
         actualDuration,
