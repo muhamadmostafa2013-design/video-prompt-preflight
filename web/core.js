@@ -12,21 +12,39 @@ window.VPP = window.VPP || {};
 
   A.isTextMorphAction = action => morphRe.test(String(action || ""));
 
-  A.safeTextAction = action => {
+  A.safeTextAction = (action, exactText = []) => {
     const original = String(action || "").trim();
     const m = original.match(/\b(?:transform|morph|animate)\s+(.+?)\s+(?:into|to)\s+([^;]+)(.*)$/i);
     if (!m) return original;
     const before = m[1].trim();
     const after = m[2].trim();
+    // A camera animation is not a word morph, even if other screen text exists.
+    const exact = exactText.map(x=>String(x).toLowerCase());
+    if(!exact.length || !exact.some(x=>before.toLowerCase().includes(x)) ||
+        !exact.some(x=>after.toLowerCase().includes(x))) return original;
     const tail = (m[3] || "").replace(/^;\s*/, "").trim();
     const safe = `show ${before} as static text, hold clearly, hard cut, then show ${after} as static text; do not morph, scramble, interpolate or animate letters`;
     return tail ? `${safe}; ${tail}` : safe;
   };
 
   A.parsePrompt = text => {
-    const durations = [...text.matchAll(/(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b/giu)].map(m => Number(m[1]));
+    const durations=[];
+    for(const m of text.matchAll(/(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b/giu)){
+      const start=m.index||0;
+      const from=Math.max(text.lastIndexOf("\n",start),text.lastIndexOf(".",start),
+        text.lastIndexOf(";",start),text.lastIndexOf(",",start))+1;
+      const prefix=text.slice(from,start).toLowerCase();
+      const ends=["\n",".",";",","].map(x=>text.indexOf(x,start+m[0].length)).filter(x=>x>=0);
+      const suffix=text.slice(start+m[0].length,ends.length?Math.min(...ends):text.length).toLowerCase();
+      if(/\b(?:hold|wait|pause|delay|after|before)\s+(?:for\s+)?$/.test(prefix))continue;
+      if(/\d+\s*[-–—]\s*$/.test(prefix))continue;
+      if(/\b(?:create|make|generate|video|scene|clip|duration|length|total|entire|whole)\b/.test(prefix) ||
+         /^\s*(?:long\b|total\b|video\b|clip\b|scene\b)/.test(suffix)||!prefix.trim())
+         durations.push(Number(m[1]));
+    }
     const duration = durations[0] || 10;
-    const aspect = (text.match(/\b(9\s*:\s*16|16\s*:\s*9|1\s*:\s*1|4\s*:\s*5)\b/i)?.[1] || "9:16").replace(/\s/g, "");
+    const aspectMatch = text.match(/\b(9\s*:\s*16|16\s*:\s*9|1\s*:\s*1|4\s*:\s*5)\b/i);
+    const aspect = (aspectMatch?.[1] || "9:16").replace(/\s/g, "");
     const low = text.toLowerCase();
     const quoted = [...text.matchAll(/["“”](.*?)["“”]/gs)].map(m=>m[1]).filter(A.hasArabic);
     const arabic = quoted.sort((a,b)=>b.length-a.length)[0] || "";
@@ -53,10 +71,11 @@ window.VPP = window.VPP || {};
 
     const timeline=[];
     for (const raw of lines) {
-      const line=clean(raw),m=line.match(/(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*s\b/i);
+      const line=clean(raw),m=line.match(/(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)/i);
       if(m){
         const start=Number(m[1]),end=Number(m[2]);
         if(end>start) timeline.push({
+          start,end,
           seconds:end-start,
           action:line.slice((m.index||0)+m[0].length).replace(/^[:\s–—-]+/,"")||"unspecified action"
         });
@@ -68,8 +87,9 @@ window.VPP = window.VPP || {};
       .forEach(p=>{if(low.includes(p.toLowerCase()))style.push(p)});
 
     const noArabic=/(?:no|do not|don't|without)\s+(?:any\s+)?arabic\s+(?:text|writing|subtitles?)/i.test(text);
-    const noSubs=/(?:no|do not|don't|without)\s+(?:automatic\s+)?subtitles?/i.test(text);
-    const noMusic=/(?:no|without|do not use|don't use)\s+(?:background\s+)?music/i.test(text);
+    const noSubs=/(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:show|add|include|generate|use)\s+)?)(?:automatic\s+)?subtitles?\b/i.test(text);
+    const noMusic=/(?:\bno\s+|\bwithout\s+|\b(?:do not|don't|never)\s+(?:(?:add|play|include|use|generate)\s+)?)(?:background\s+)?music\b/i.test(text)
+      ||/(?:بدون|من غير|لا تستخدم|لا تضيف)\s+(?:أي\s+)?موسي(?:قى|قا)/u.test(text);
     const presenterArabic=/presenter[^.\n]{0,100}(?:arabic only|speaks?[^.\n]{0,30}arabic)/i.test(text)
       ||/presenter[^.\n]{0,120}(?:must not|do not|don't)[^.\n]{0,50}pronounce[^.\n]{0,40}german/i.test(text);
     const textMorph = screen.length > 1 && timeline.some(e=>A.isTextMorphAction(e.action));
@@ -95,13 +115,18 @@ window.VPP = window.VPP || {};
         max_spoken_words_per_second:2.7
       },
       forbidden:[],
-      parse_meta:{duration_mentions:durations,parser:"deterministic-web-v0.4"}
+      parse_meta:{duration_mentions:durations,duration_explicit:durations.length>0,
+        aspect_explicit:!!aspectMatch,parser:"deterministic-web-v0.5.3"}
     };
   };
 
   A.simulate = scene => {
     const d=Number(scene.duration_seconds||10);
-    const total=(scene.timeline||[]).reduce((s,e)=>s+Number(e.seconds||0),0);
+    let total=0;
+    for(const e of (scene.timeline||[])){
+      if(Number.isFinite(Number(e.start)))total=Math.max(total,Number(e.end??(Number(e.start)+Number(e.seconds||0))));
+      else total+=Number(e.seconds||0);
+    }
     const words=A.wordCount(scene.spoken?.arabic||"");
     const speech=words/2.7, util=speech/d, rate=(scene.timeline||[]).length/d*10;
     let status="comfortable";
@@ -122,7 +147,19 @@ window.VPP = window.VPP || {};
 
     if(screen.length>6) A.add(out,"screen_text.crowded","warning",`${screen.length} screen-text items requested.`,`Reduce text or split the scene.`,12);
 
-    const total=timeline.reduce((s,e)=>s+Number(e.seconds||0),0);
+    let total=0,priorEnd=0;
+    for(const e of timeline){
+      const seconds=Number(e.seconds||0);
+      const start=e.start===undefined?total:Number(e.start);
+      const end=e.end===undefined?start+seconds:Number(e.end);
+      if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||seconds<=0){
+        A.add(out,"timeline.invalid","error","Invalid timeline event.","Correct event durations and intervals.",25);
+        continue;
+      }
+      if(start<priorEnd-.05)A.add(out,"timeline.overlap","error",
+        `Timeline overlaps: ${start}s starts before ${priorEnd}s.`,"Avoid overlapping intervals.",35);
+      priorEnd=end;total=Math.max(total,end);
+    }
     if(total>d+.05) A.add(out,"timeline.overflow","error",`Timeline totals ${total.toFixed(1)}s but scene is ${d}s.`,`Shorten events.`,35);
 
     const wc=A.wordCount(scene.spoken?.arabic||""),cap=d*2.7;
@@ -132,12 +169,14 @@ window.VPP = window.VPP || {};
     if(durations.length>1) A.add(out,"prompt.duration.conflict","error",`Conflicting durations: ${durations.join(", ")}s.`,`Use one exact duration.`,35);
 
     const low=text.toLowerCase();
-    const noMusic=/(?:no|without|do not use|don't use)\s+(?:background\s+)?music/i.test(text);
-    const yesMusic=/(?:add|use|with|include)\s+(?:soft\s+|subtle\s+)?(?:background\s+)?music/i.test(text);
+    const noMusic=rules.no_background_music;
+    const cleanedMusic=text.replace(/\b(?:do not|don't|never)\s+(?:add|use|include|play)\b/gi,"forbid");
+    const yesMusic=/\b(?:add|use|with|include|play)\s+(?:soft\s+|subtle\s+)?(?:background\s+)?music\b/i.test(cleanedMusic);
     if(noMusic&&yesMusic) A.add(out,"prompt.music.conflict","error","Prompt both forbids and requests music.","Choose one audio policy.",30);
 
-    const noSub=/(?:no|without|do not|don't)\s+(?:automatic\s+)?subtitles?/i.test(text);
-    const yesSub=/(?:add|show|include|generate)\s+(?:automatic\s+)?subtitles?/i.test(text);
+    const noSub=rules.no_auto_subtitles;
+    const cleanedSub=text.replace(/\b(?:do not|don't|never)\s+(?:add|show|include|generate)\b/gi,"forbid");
+    const yesSub=/\b(?:add|show|include|generate)\s+(?:automatic\s+)?subtitles?\b/i.test(cleanedSub);
     if(noSub&&yesSub) A.add(out,"prompt.subtitle.conflict","error","Prompt both forbids and requests subtitles.","Keep subtitles in one stage only.",30);
 
     const noGerman=/presenter[^.\n]{0,120}(?:must not|do not|don't)[^.\n]{0,50}(?:pronounce|speak)[^.\n]{0,40}german/i.test(text);
@@ -151,6 +190,14 @@ window.VPP = window.VPP || {};
     }
     if(noGerman&&yesGerman) A.add(out,"prompt.audio.conflict","error","Presenter is both forbidden and asked to pronounce German.","Move German pronunciation to verified post audio.",40);
 
+    if(!scene.parse_meta?.duration_explicit)A.add(out,"prompt.duration.inferred","warning",
+      "No explicit total duration; 10s is a placeholder.","Confirm video duration.",8);
+    if(!scene.parse_meta?.aspect_explicit)A.add(out,"prompt.aspect.inferred","info",
+      "No explicit aspect ratio; 9:16 is a placeholder.","Confirm ratio.",0);
+    if(/[\u0600-\u06FF]/u.test(text)&&!/[A-Za-z]/.test(text))A.add(out,"prompt.arabic.limited","warning",
+      "Arabic-only prompts have partial deterministic support.","Review semantics manually.",10);
+    if(/(?:بدون|من غير|لا تستخدم)\s+(?:أي\s+)?موسيقى/u.test(text)&&/(?:ضيف|أضف|شغّل|حط|استخدم)\s+موسيقى/u.test(text))
+      A.add(out,"prompt.music.conflict.ar","error","Arabic music policy contradicts itself.","Choose one music instruction.",30);
     const actions=(low.match(/\b(?:show|display|transform|morph|animate|cut|zoom|move|switch|split|highlight|pause|transition|appear|disappear)\b/g)||[]).length;
     const maxA=Math.max(5,Math.round(d/10*7));
     if(actions>maxA) A.add(out,"prompt.action_density","warning",`About ${actions} visual/action instructions for ${d}s.`,`Reduce actions or split the scene.`,15);
@@ -208,9 +255,11 @@ window.VPP = window.VPP || {};
     if(scene.timeline?.length){
       let c=0;
       lines.push("TIMELINE: "+scene.timeline.map(e=>{
-        const s=c;c+=Number(e.seconds||0);
-        const action=scene.screen_text?.length?A.safeTextAction(e.action):e.action;
-        return `${s}-${c}s ${action}`;
+        const start=e.start===undefined?c:Number(e.start);
+        const end=e.end===undefined?start+Number(e.seconds||0):Number(e.end);
+        c=end;
+        const action=scene.screen_text?.length?A.safeTextAction(e.action,scene.screen_text):e.action;
+        return `${start}-${end}s ${action}`;
       }).join("; "));
     }
     const strict=[];
