@@ -227,7 +227,7 @@ def cmd_check_video(args: argparse.Namespace) -> int:
             args.video, scene, ocr=args.ocr, ocr_lang=args.ocr_lang,
             asr_model=args.asr_model, frames=args.frames,
         )
-        if not args.spec:
+        if not args.spec or not scene:
             result["checks"].append({
                 "name": "missing_scene_spec", "status": "review",
                 "reason": "No scene spec supplied: duration, ratio and content cannot be verified",
