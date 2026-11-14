@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 import yaml
-from pathlib import Path
 
 from .analyzer import analyze_scene
 from .compiler import compile_scene
