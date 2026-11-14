@@ -1,7 +1,7 @@
 name: release-acceptance
 on:
   push:
-    branches: [main, 'fix/vpp-0.5.1-release-gates']
+    branches: [main, 'fix/vpp-0.5.1-release-gates', 'fix/claude-audit-high-severity']
   pull_request:
   workflow_dispatch:
 
@@ -38,6 +38,10 @@ jobs:
       - name: Browser JS syntax check
         run: |
           for f in web/*.js; do node --check "$f"; done
+      - name: Real browser-controller DOM smoke tests (Node VM)
+        run: node --test tests/browser_smoke.cjs
+      - name: Ruff critical Python correctness checks
+        run: ruff check --select E9,F63,F7,F82 .
       - name: Full Python regression suite
         run: pytest -q
       - name: Upload exact acceptance evidence
