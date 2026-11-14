@@ -89,8 +89,10 @@ const constitutionReady=(async()=>{
 })();
 
 function failures(){
-  try{return JSON.parse(localStorage.getItem("vpp_failures")||"[]")}
-  catch{return[]}
+  try{
+    const data=JSON.parse(localStorage.getItem("vpp_failures")||"[]");
+    return Array.isArray(data)?data:[];
+  }catch{return[]}
 }
 
 function tierLabel(f){
@@ -100,13 +102,24 @@ function tierLabel(f){
   return ` · ${labels[tier]||tier}`;
 }
 
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g, ch=>({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[ch]));
+}
+function safeEvidenceUrl(value){
+  try{
+    const u=new URL(String(value||""));
+    return u.protocol==="https:" ? escapeHtml(u.href) : "#";
+  }catch{return "#";}
+}
 function drawFindings(fs){
   findingsEl.innerHTML=fs.map(f=>
     `<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}">
-      <strong>${f.severity.toUpperCase()} · ${f.agent||'Verifier'} · ${f.rule_id}${tierLabel(f)}</strong><br>
-      ${f.message}
-      ${f.recommendation?`<br><small>Director note → ${f.recommendation}</small>`:''}
-      ${(f.sources||[]).map(s=>`<div class="source">Evidence: <a href="${s.url}" target="_blank" rel="noreferrer">${s.name}</a></div>`).join("")}
+      <strong>${escapeHtml(f.severity.toUpperCase())} · ${escapeHtml(f.agent||'Verifier')} · ${escapeHtml(f.rule_id)}${escapeHtml(tierLabel(f))}</strong><br>
+      ${escapeHtml(f.message)}
+      ${f.recommendation?`<br><small>Director note → ${escapeHtml(f.recommendation)}</small>`:""}
+      ${(f.sources||[]).map(s=>`<div class="source">Evidence: <a href="${safeEvidenceUrl(s.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.name)}</a></div>`).join("")}
     </div>`
   ).join("");
 }
@@ -192,11 +205,11 @@ async function triple(){
 
   roundsEl.innerHTML=res.rounds.map(r=>
     `<div class="round">
-      <h3>Round ${r.round} · ${r.name}</h3>
-      ${r.winner?`<p class="pass">Director pick: <strong>${r.winner}</strong></p>`:""}
-      ${(r.candidates||[]).map(c=>`<div class="candidate"><strong>${c.name}</strong> · score ${c.score} · ~${c.tok} tokens · constraints ${c.coverage}%</div>`).join("")}
-      ${(r.findings||[]).map(f=>`<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}"><strong>${f.agent} · ${f.rule_id}${tierLabel(f)}</strong><br>${f.message}</div>`).join("")}
-      ${r.passed!==undefined?`<p class="${r.passed?'pass':'fail'}"><strong>${r.passed?'GATE PASS · SHOOT IT':'GATE FAIL · ONE MORE TAKE'}</strong> · score ${r.score}/100 · confidence ${r.confidence}</p>`:""}
+      <h3>Round ${escapeHtml(r.round)} · ${escapeHtml(r.name)}</h3>
+      ${r.winner?`<p class="pass">Director pick: <strong>${escapeHtml(r.winner)}</strong></p>`:""}
+      ${(r.candidates||[]).map(c=>`<div class="candidate"><strong>${escapeHtml(c.name)}</strong> · score ${escapeHtml(c.score)} · ~${escapeHtml(c.tok)} tokens · constraints ${escapeHtml(c.coverage)}%</div>`).join("")}
+      ${(r.findings||[]).map(f=>`<div class="finding ${f.severity==='error'?'fail':f.severity==='warning'?'warn':'info'}"><strong>${escapeHtml(f.agent)} · ${escapeHtml(f.rule_id)}${escapeHtml(tierLabel(f))}</strong><br>${escapeHtml(f.message)}</div>`).join("")}
+      ${r.passed!==undefined?`<p class="${r.passed?'pass':'fail'}"><strong>${r.passed?'GATE PASS · SHOOT IT':'GATE FAIL · ONE MORE TAKE'}</strong> · score ${escapeHtml(r.score)}/100 · confidence ${escapeHtml(r.confidence)}</p>`:""}
     </div>`
   ).join("");
 }
@@ -205,9 +218,9 @@ function drawMemory(){
   const a=failures();
   $("failureList").innerHTML=a.length?a.map((x,i)=>
     `<div class="finding">
-      <strong>💥 ${x.category}</strong><br>
-      <small>Observed:</small> ${x.observed}<br>
-      <small>Expected:</small> ${x.expected}
+      <strong>💥 ${escapeHtml(x.category)}</strong><br>
+      <small>Observed:</small> ${escapeHtml(x.observed)}<br>
+      <small>Expected:</small> ${escapeHtml(x.expected)}
       <button class="secondary" onclick="deleteFailure(${i})">Delete</button>
     </div>`
   ).join(""):"<p>No bloopers saved yet. Your first bad take gets a starring role here. 🍿</p>";

@@ -1,0 +1,44 @@
+name: release-acceptance
+on:
+  push:
+    branches: [main, 'fix/vpp-0.5.1-release-gates']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ten-release-gates:
+    name: 10 real acceptance gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare real video and local OCR tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg tesseract-ocr tesseract-ocr-eng fonts-dejavu-core
+      - name: Install tested package with offline OCR extra
+        run: python -m pip install -e '.[dev,media-ocr]'
+      - name: Gate 1–10 | Real acceptance tests
+        run: pytest -vv tests/test_release_acceptance.py --junitxml=release-acceptance.xml
+      - name: Browser JS syntax check
+        run: |
+          for f in web/*.js; do node --check "$f"; done
+      - name: Full Python regression suite
+        run: pytest -q
+      - name: Upload exact acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-acceptance-results
+          path: release-acceptance.xml
+          if-no-files-found: warn
+          retention-days: 14

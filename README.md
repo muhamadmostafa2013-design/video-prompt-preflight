@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.5 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.1 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.5: local Triple Verify + optional Jev judge and media QA
+## v0.5.1: local Triple Verify + optional Jev judge and media QA
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -179,3 +179,7 @@ Optional local-only ASR needs the `media-asr` extra and a pre-downloaded local f
 ## License
 
 MIT — commercial use, modification and redistribution are allowed under the license terms.
+
+## Release acceptance and independent audit
+
+The ten explicit release gates include an actual encoded MP4 probe and locally executed OCR; see [test protocol](docs/RELEASE_ACCEPTANCE_10_GATES.md) and [Claude review handoff](docs/CLAUDE_INDEPENDENT_REVIEW_PROMPT_AR.md). This is a tested **local-first beta**, not an externally certified, error-free commercial video QA service. The static browser remains manual for text inspection; OCR/ASR are opt-in local CLI features.

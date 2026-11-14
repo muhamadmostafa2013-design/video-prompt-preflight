@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from . import __version__
+
 import re
 
 from .prompt_analyzer import analyze_prompt
@@ -103,7 +105,7 @@ def triple_review(text: str, provider: str = "generic") -> dict:
         heuristic_score = max(0, heuristic_score - 40)
 
     return {
-        "version": "0.4.0",
+        "version": __version__,
         "provider": provider,
         "scene": scene,
         "rounds": [

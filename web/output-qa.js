@@ -4,8 +4,10 @@ window.VPPOutputQA = (() => {
   let current = null;
 
   const readFailures = () => {
-    try { return JSON.parse(localStorage.getItem("vpp_failures") || "[]"); }
-    catch { return []; }
+    try {
+      const items = JSON.parse(localStorage.getItem("vpp_failures") || "[]");
+      return Array.isArray(items) ? items : [];
+    } catch { return []; }
   };
 
   const writeFailures = items => {
@@ -27,10 +29,15 @@ window.VPPOutputQA = (() => {
     return m ? Number(m[1]) / Number(m[2]) : 9/16;
   };
 
-  const once = (target, event) => new Promise((resolve, reject) => {
+  const once = (target, event, timeoutMs=15000) => new Promise((resolve, reject) => {
     const ok = () => { cleanup(); resolve(); };
     const bad = () => { cleanup(); reject(new Error(`Video ${event} failed`)); };
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Video ${event} timed out; unsupported or corrupted media`));
+    }, timeoutMs);
     const cleanup = () => {
+      clearTimeout(timeout);
       target.removeEventListener(event, ok);
       target.removeEventListener("error", bad);
     };
@@ -157,6 +164,14 @@ window.VPPOutputQA = (() => {
 
   const analyzeFile = async file => {
     const scene = typeof options.getScene === "function" ? options.getScene() : {};
+    if (!file || file.size > 512 * 1024 * 1024) {
+      const panel = $("videoQaPanel");
+      panel.hidden = false;
+      $("videoQaStatus").textContent = "VIDEO TOO LARGE";
+      $("videoQaStatus").className = "fail";
+      $("videoQaSummary").textContent = "Select a video smaller than 512 MiB for local browser analysis.";
+      return;
+    }
     const panel = $("videoQaPanel");
     panel.hidden = false;
     $("videoQaStatus").textContent = "ROLLING QA… 🎥";
