@@ -82,6 +82,7 @@
     <div class="actions"><label class="file-pick" for="videoInput">🎥 Pick generated video</label><input id="videoInput" type="file" accept="video/*" aria-label="Choose a local video file for quality review" /></div>
     <div id="videoQaPanel" class="qa-panel" hidden>
       <h3 id="videoQaStatus" class="qa-status" role="status" aria-live="polite">Waiting for a take…</h3>
+      <video id="qaVideoPreview" controls playsinline preload="metadata" aria-label="Play the entire uploaded video to verify text, timing and sound" style="max-width:100%;width:100%;max-height:420px;margin:12px 0;border-radius:12px;background:#050508" hidden></video>
       <div id="videoQaSummary"></div>
       <div id="frameStrip" class="frame-strip"></div>
       <div class="text-checks"><p id="textQaSummary" class="micro"></p><div id="textChecklist"></div></div>
