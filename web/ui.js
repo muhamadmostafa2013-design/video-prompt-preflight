@@ -89,8 +89,10 @@ const constitutionReady=(async()=>{
 })();
 
 function failures(){
-  try{return JSON.parse(localStorage.getItem("vpp_failures")||"[]")}
-  catch{return[]}
+  try{
+    const data=JSON.parse(localStorage.getItem("vpp_failures")||"[]");
+    return Array.isArray(data)?data:[];
+  }catch{return[]}
 }
 
 function tierLabel(f){
