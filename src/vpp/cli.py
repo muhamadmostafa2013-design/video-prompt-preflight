@@ -111,6 +111,9 @@ def cmd_optimize(args: argparse.Namespace) -> int:
         print(output, end="")
     if args.spec:
         dump_scene(result["scene"], args.spec)
+    if result["requires_review"]:
+        print("DRAFT ONLY: unresolved source constraints require human approval.", file=sys.stderr)
+        return 3
     return 0 if result["after"]["passed"] else 2
 
 
