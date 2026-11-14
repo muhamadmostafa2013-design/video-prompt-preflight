@@ -91,7 +91,7 @@ const constitutionReady=(async()=>{
 function failures(){
   try{
     const data=JSON.parse(localStorage.getItem("vpp_failures")||"[]");
-    return Array.isArray(data)?data:[];
+    return Array.isArray(data)?data.filter(x=>x && typeof x==="object"):[];
   }catch{return[]}
 }
 
@@ -229,7 +229,9 @@ function drawMemory(){
 window.deleteFailure=i=>{
   const a=failures();
   a.splice(i,1);
-  localStorage.setItem("vpp_failures",JSON.stringify(a));
+  try{localStorage.setItem("vpp_failures",JSON.stringify(a));}
+  catch{summaryEl.textContent="Your browser blocked local storage. This note was not saved.";}
+
   drawMemory();
 };
 
@@ -240,7 +242,9 @@ $("saveFailureBtn").onclick=()=>{
   if(!category||!observed||!expected)return;
   const a=failures();
   a.push({category,observed,expected,created_at:new Date().toISOString(),source:"manual"});
-  localStorage.setItem("vpp_failures",JSON.stringify(a));
+  try{localStorage.setItem("vpp_failures",JSON.stringify(a));}
+  catch{summaryEl.textContent="Your browser blocked local storage. This note was not saved.";}
+
   $("failureCategory").value=$("failureObserved").value=$("failureExpected").value="";
   drawMemory();
 };
