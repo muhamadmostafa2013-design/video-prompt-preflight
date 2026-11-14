@@ -72,7 +72,7 @@ export TYPESAFE_API_KEY='...'
 Run:
 
 ```bash
-vpp jev-review prompt.txt --provider veo
+vpp jev-review prompt.txt --provider veo --allow-remote-judge
 ```
 
 Use `--model` only if your TypeSafe account requires an explicit model identifier.
@@ -86,7 +86,7 @@ OpenAI-compatible:
 ```bash
 pip install 'video-prompt-preflight[adapter-openai]'
 export OPENAI_API_KEY='...'
-vpp jev-review prompt.txt --provider veo --engine openai --model <model-name>
+vpp jev-review prompt.txt --provider veo --engine openai --model <model-name> --allow-remote-judge
 ```
 
 Anthropic:
@@ -94,7 +94,7 @@ Anthropic:
 ```bash
 pip install 'video-prompt-preflight[adapter-anthropic]'
 export ANTHROPIC_API_KEY='...'
-vpp jev-review prompt.txt --provider veo --engine anthropic --model <model-name>
+vpp jev-review prompt.txt --provider veo --engine anthropic --model <model-name> --allow-remote-judge
 ```
 
 Adapter results are useful for workflow testing and comparison. They should not be mislabeled as native Jev results.
@@ -114,3 +114,7 @@ To expose Jev in the public web UI later, use a secure server-side proxy with:
 ## Output QA
 
 Jev is currently fed structured VPP state rather than raw video pixels/audio. The browser Output QA should first extract deterministic metadata, sampled-frame evidence and human-confirmed failures. Those structured results can then become another Jev state for a fast post-generation semantic gate.
+
+### Privacy requirement (v0.5.3)
+
+All `jev-review` engines require `--allow-remote-judge`, including the default TypeSafe Jev SDK: prompts and review metadata may be transmitted to the selected service. The deterministic `triple-review` and `lint-prompt` are available locally without that flag. Review provider data-retention and authorization requirements before opting in.

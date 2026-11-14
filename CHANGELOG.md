@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.3 — deep test gates, browser parity and privacy hardening
+- Closed hidden parser flaws: falsely captured on-screen text, missed negation and same-line durations; added strict nonoverlapping timeline validation.
+- Brought Python and browser parsers into closer agreement with 13 shared golden cases, including absolute event times and negative instructions.
+- Improved deterministic review gates when scene duration or Arabic-only semantics cannot be verified.
+- Added video playback in browser and prevented false automatic errors when metadata is inferred instead of specified.
+- Improved keyboard accessibility, CSP and removal of HTML inline delete events.
+- Introduced opt-in authorization for remote Jev/LLM judges, safer CLI parsing error handling, and review exit codes.
+- Added actual Chromium browser E2E tests, full Ruff lint, and broadened regression suites; manually reviewed automatic lint fixes.
+- Clarified engineering beta versus commercial production boundaries.
+
+
 ## 0.5.2 — Claude independent audit remediation
 - Fixed falsely detected music conflicts, global-vs-action durations, missing "seconds" timeline ranges, and absolute gaps in compiled timelines.
 - Confined static-word rewrite to actual exact-text transitions; camera animation remains a camera instruction.
