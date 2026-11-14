@@ -13,7 +13,13 @@ from pathlib import Path
 import pytest
 
 from vpp import __version__
-from vpp.media_qa import MediaQAError, inspect_video, ocr_frames, probe_video, transcript_local
+from vpp.media_qa import (
+    MediaQAError,
+    inspect_video,
+    ocr_frames,
+    probe_video,
+    transcript_local,
+)
 from vpp.optimizer import optimize_prompt
 from vpp.prompt_analyzer import analyze_prompt
 from vpp.triple_review import triple_review
@@ -42,7 +48,7 @@ def test_gate_01_version_contract_consistent():
     version_file = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
     manifest = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert version_file == __version__
-    assert re.search(r'^version = "' + re.escape(__version__) + r'"$', manifest, re.M)
+    assert re.search(r'^version = "' + re.escape(__version__) + r'"$', manifest, re.MULTILINE)
     assert triple_review(PROMPT, provider="veo")["version"] == __version__
 
 

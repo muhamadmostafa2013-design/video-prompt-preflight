@@ -6,7 +6,6 @@ import pytest
 
 from vpp.prompt_analyzer import analyze_prompt
 
-
 CASES = json.loads((Path(__file__).parent / "conformance_cases.json").read_text(encoding="utf-8"))
 
 

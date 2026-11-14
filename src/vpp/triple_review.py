@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from . import __version__
-
 import re
 
-from .prompt_analyzer import analyze_prompt
-from .simulator import simulate_scene
-from .knowledge import evaluate_knowledge
+from . import __version__
 from .candidates import build_candidates
 from .failure_memory import match_failures
+from .knowledge import evaluate_knowledge
+from .prompt_analyzer import analyze_prompt
+from .simulator import simulate_scene
 
-_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.IGNORECASE)
 
 
 def _dedupe(items: list[dict]) -> list[dict]:

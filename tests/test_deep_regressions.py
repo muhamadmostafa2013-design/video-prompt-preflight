@@ -1,12 +1,13 @@
 """Independent bug regressions discovered after 0.5.2. These gates are behavior tests."""
 from __future__ import annotations
 
+from argparse import Namespace
+
 from vpp.analyzer import analyze_scene
+from vpp.cli import cmd_check_video
+from vpp.optimizer import optimize_prompt
 from vpp.parser import parse_prompt
 from vpp.prompt_analyzer import analyze_prompt
-from vpp.optimizer import optimize_prompt
-from vpp.cli import cmd_check_video
-from argparse import Namespace
 
 
 def ids(text):
@@ -74,7 +75,7 @@ def test_optimizer_missing_scene_duration_cannot_release_unverified_default():
 
 
 def test_media_qa_empty_scene_spec_must_not_be_pass(monkeypatch, capsys):
-    import vpp.cli as cli
+    from vpp import cli
     monkeypatch.setattr(cli, "load_scene", lambda _: {})
     monkeypatch.setattr(cli, "inspect_video", lambda *a, **k: {
         "decision":"pass", "video":"x.mp4",

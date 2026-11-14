@@ -4,7 +4,7 @@ import json
 import re
 from importlib import resources
 
-_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.IGNORECASE)
 
 
 def load_failure_memory() -> list[dict]:

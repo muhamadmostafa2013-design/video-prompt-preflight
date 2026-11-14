@@ -1,13 +1,11 @@
 """Offline media QA contract tests. Optional binaries/models are mocked deliberately."""
-from pathlib import Path
 import shutil
 import subprocess
-from unittest.mock import patch
+
 import pytest
 
 from vpp import media_qa
 from vpp.cli import build_parser, cmd_check_video
-
 
 META = {"duration_seconds": 10.0, "width": 1080, "height": 1920,
         "aspect_ratio": 1080 / 1920, "has_audio": True}

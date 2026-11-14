@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import re
 import math
+import re
 
 from .models import Finding, Report
 from .text import contains_arabic, word_count
 
-_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
-_STABLE_TEXT_RE = re.compile(r"\b(?:show|display|hold|static|keep|present|visible)\b", re.I)
+_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.IGNORECASE)
+_STABLE_TEXT_RE = re.compile(r"\b(?:show|display|hold|static|keep|present|visible)\b", re.IGNORECASE)
 
 
 def _add(report: Report, rule_id: str, severity: str, message: str, suggestion: str | None, points: int) -> None:

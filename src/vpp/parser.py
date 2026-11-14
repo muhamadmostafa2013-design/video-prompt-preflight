@@ -4,10 +4,9 @@ import re
 
 from .text import contains_arabic
 
-
-_DURATION_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b", re.I)
+_DURATION_RE = re.compile(r"(?<!\d)(\d+(?:\.\d+)?)\s*(?:[-–—]\s*)?(?:seconds?|secs?|sec|ثانية|ثواني)\b", re.IGNORECASE)
 _ASPECT_RE = re.compile(r"\b(9\s*:\s*16|16\s*:\s*9|1\s*:\s*1|4\s*:\s*5)\b")
-_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)", re.I)
+_RANGE_RE = re.compile(r"(?P<start>\d+(?:\.\d+)?)\s*[-–—]\s*(?P<end>\d+(?:\.\d+)?)\s*(?:s\b|seconds?\b|secs?\b)", re.IGNORECASE)
 _QUOTED_RE = re.compile(r'["“”](.*?)["“”]')
 
 _MARKERS = {
@@ -115,13 +114,13 @@ def _extract_screen_text(text: str) -> list[str]:
             candidate = line.strip('"“”')
             if _looks_like_exact_text(candidate) and not re.search(
                 r"\b(?:lighting|cinematic|camera|background|studio|vertical|portrait|audio|music|subtitles)\b",
-                candidate, re.I
+                candidate, re.IGNORECASE
             ):
                 out.append(candidate)
             if capture_budget <= 0 or low.startswith(_STOP_PREFIXES):
                 capture = False
 
-    for m in re.finditer(r"(?:on[- ]screen|display|show|text)\s*(?:text)?\s*[:=]?\s*[\"“]([^\"”]+)[\"”]", text, re.I):
+    for m in re.finditer(r"(?:on[- ]screen|display|show|text)\s*(?:text)?\s*[:=]?\s*[\"“]([^\"”]+)[\"”]", text, re.IGNORECASE):
         value = m.group(1).strip()
         if value and not contains_arabic(value):
             out.append(value)

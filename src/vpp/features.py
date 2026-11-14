@@ -4,19 +4,19 @@ import re
 
 from .simulator import simulate_scene
 
-_ACTION_RE = re.compile(r"\b(?:show|display|transform|morph|animate|cut|zoom|move|switch|split|highlight|pause|transition|appear|disappear|turns?|walks?|runs?|drives?|burns?|changes?)\b", re.I)
-_NEGATIVE_RE = re.compile(r"\b(?:no|not|never|without|avoid|don't|do not|must not)\b", re.I)
-_CAMERA_RE = re.compile(r"\b(?:camera|close[- ]?up|medium shot|wide shot|low[- ]angle|high[- ]angle|pan|tilt|zoom|tracking|locked[- ]?off|locked camera|handheld|dolly|crane|orbit|truck|push in|pull out)\b", re.I)
-_CAMERA_MOVE_RE = re.compile(r"\b(?:pan(?:s|ning)?|tilt(?:s|ing)?|zoom(?:s|ing)?|track(?:s|ing)?|dolly|crane|orbit|truck|push(?:es)? in|pull(?:s)? out|pedestal|handheld)\b", re.I)
-_STATIC_CAMERA_RE = re.compile(r"\b(?:static shot|static camera|locked[- ]?off|locked camera|stationary camera|fixed camera|tripod)\b", re.I)
-_ACTION_DETAIL_RE = re.compile(r"\b(?:action|walk|run|drive|turn|transform|morph|burn|move|gesture|raise|look|speak|say)\w*\b", re.I)
-_OBJECT_HINT_RE = re.compile(r"\b(?:two|three|four|multiple|both|between|left of|right of|behind|in front of|next to|together|each)\b", re.I)
-_GERMAN_HINT_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+", re.U)
-_DIALOGUE_RE = re.compile(r"\b(?:says?|asks?|replies?|shouts?|whispers?|answers?)\b", re.I)
-_TEXT_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.I)
-_IMAGE_VIDEO_RE = re.compile(r"\b(?:image[- ]to[- ]video|input image|starting frame|start frame|reference image|first frame)\b", re.I)
-_MINIMAX_COMMAND_RE = re.compile(r"\[(?:Truck|Pan|Push|Pull|Pedestal|Tilt|Zoom|Shake|Tracking shot|Static shot)", re.I)
-_MULTI_SUBJECT_RE = re.compile(r"\b(five|six|seven|eight|nine|ten|\d+)\s+(?:people|persons|characters|subjects|men|women|children|actors)\b", re.I)
+_ACTION_RE = re.compile(r"\b(?:show|display|transform|morph|animate|cut|zoom|move|switch|split|highlight|pause|transition|appear|disappear|turns?|walks?|runs?|drives?|burns?|changes?)\b", re.IGNORECASE)
+_NEGATIVE_RE = re.compile(r"\b(?:no|not|never|without|avoid|don't|do not|must not)\b", re.IGNORECASE)
+_CAMERA_RE = re.compile(r"\b(?:camera|close[- ]?up|medium shot|wide shot|low[- ]angle|high[- ]angle|pan|tilt|zoom|tracking|locked[- ]?off|locked camera|handheld|dolly|crane|orbit|truck|push in|pull out)\b", re.IGNORECASE)
+_CAMERA_MOVE_RE = re.compile(r"\b(?:pan(?:s|ning)?|tilt(?:s|ing)?|zoom(?:s|ing)?|track(?:s|ing)?|dolly|crane|orbit|truck|push(?:es)? in|pull(?:s)? out|pedestal|handheld)\b", re.IGNORECASE)
+_STATIC_CAMERA_RE = re.compile(r"\b(?:static shot|static camera|locked[- ]?off|locked camera|stationary camera|fixed camera|tripod)\b", re.IGNORECASE)
+_ACTION_DETAIL_RE = re.compile(r"\b(?:action|walk|run|drive|turn|transform|morph|burn|move|gesture|raise|look|speak|say)\w*\b", re.IGNORECASE)
+_OBJECT_HINT_RE = re.compile(r"\b(?:two|three|four|multiple|both|between|left of|right of|behind|in front of|next to|together|each)\b", re.IGNORECASE)
+_GERMAN_HINT_RE = re.compile(r"[A-Za-zÄÖÜäöüß]+", re.UNICODE)
+_DIALOGUE_RE = re.compile(r"\b(?:says?|asks?|replies?|shouts?|whispers?|answers?)\b", re.IGNORECASE)
+_TEXT_MORPH_RE = re.compile(r"\b(?:transform|morph|animate)\b[^\n.;]{0,120}\b(?:into|to)\b", re.IGNORECASE)
+_IMAGE_VIDEO_RE = re.compile(r"\b(?:image[- ]to[- ]video|input image|starting frame|start frame|reference image|first frame)\b", re.IGNORECASE)
+_MINIMAX_COMMAND_RE = re.compile(r"\[(?:Truck|Pan|Push|Pull|Pedestal|Tilt|Zoom|Shake|Tracking shot|Static shot)", re.IGNORECASE)
+_MULTI_SUBJECT_RE = re.compile(r"\b(five|six|seven|eight|nine|ten|\d+)\s+(?:people|persons|characters|subjects|men|women|children|actors)\b", re.IGNORECASE)
 
 
 def _subject_count_hint(text: str) -> int:
@@ -65,7 +65,7 @@ def extract_features(text: str, scene: dict) -> dict:
         "screen_text_count": screen_count,
         "exact_text_present": screen_count > 0,
         "timeline_count": timeline_count,
-        "multi_shot": timeline_count >= 2 or bool(re.search(r"\b(?:shot|scene)\s*#?\s*\d+\b", text, re.I)),
+        "multi_shot": timeline_count >= 2 or bool(re.search(r"\b(?:shot|scene)\s*#?\s*\d+\b", text, re.IGNORECASE)),
         "arabic_audio": arabic_audio,
         "german_screen": german_screen,
         "presenter_arabic_only": presenter_arabic_only,

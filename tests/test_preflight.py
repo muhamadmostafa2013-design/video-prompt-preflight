@@ -1,18 +1,19 @@
 import copy
-import yaml
 from pathlib import Path
 
+import yaml
+
 from vpp.analyzer import analyze_scene
+from vpp.candidates import build_candidates
 from vpp.compiler import compile_scene
+from vpp.failure_memory import match_failures
 from vpp.fixer import auto_fix_scene
+from vpp.knowledge import evaluate_knowledge
+from vpp.optimizer import optimize_prompt
 from vpp.parser import parse_prompt
 from vpp.prompt_analyzer import analyze_prompt
 from vpp.simulator import simulate_scene
-from vpp.optimizer import optimize_prompt
-from vpp.knowledge import evaluate_knowledge
 from vpp.triple_review import triple_review
-from vpp.candidates import build_candidates
-from vpp.failure_memory import match_failures
 
 ROOT = Path(__file__).resolve().parents[1]
 

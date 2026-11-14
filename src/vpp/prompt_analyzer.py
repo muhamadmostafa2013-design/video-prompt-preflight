@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 
+from .analyzer import analyze_scene
 from .models import Finding, Report
 from .parser import parse_prompt
-from .analyzer import analyze_scene
 
 
 def _add(report: Report, rule_id: str, severity: str, message: str, suggestion: str | None, points: int) -> None:
