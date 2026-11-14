@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.2 — Claude independent audit remediation
+- Fixed falsely detected music conflicts, global-vs-action durations, missing "seconds" timeline ranges, and absolute gaps in compiled timelines.
+- Confined static-word rewrite to actual exact-text transitions; camera animation remains a camera instruction.
+- Added conservative warnings for inferred duration/partially supported Arabic text and review-required CLI exit codes.
+- Ensured external Jev semantic judgments cannot override blocking deterministic preflight errors.
+- Packaged the original failure-memory corpus in distributable wheels (verified via isolated installation).
+- Fixed corrupt browser history entries, unavailable localStorage, metadata verdict on no-text videos and manual video-wide text whitelist checklist.
+- Added SAR/rotation display ratio, sampled silent-audio analysis, local protocol restrictions and OCR whitelist/Arabic evidence.
+- Added audit regression tests, actual-video tests, Node VM DOM smoke tests, and acceptance + wheel CI checks.
+
+
 ## 0.5.1 — release hardening / independent acceptance
 - Synced version across package, CLI review output and front-end label.
 - Escaped untrusted values before browser DOM insertion, including locally saved mistakes and knowledge-source links.

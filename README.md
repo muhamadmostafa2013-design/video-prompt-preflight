@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.1 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.2 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.5.1: local Triple Verify + optional Jev judge and media QA
+## v0.5.2: local Triple Verify + optional Jev judge and media QA
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -183,3 +183,18 @@ MIT — commercial use, modification and redistribution are allowed under the li
 ## Release acceptance and independent audit
 
 The ten explicit release gates include an actual encoded MP4 probe and locally executed OCR; see [test protocol](docs/RELEASE_ACCEPTANCE_10_GATES.md) and [Claude review handoff](docs/CLAUDE_INDEPENDENT_REVIEW_PROMPT_AR.md). This is a tested **local-first beta**, not an externally certified, error-free commercial video QA service. The static browser remains manual for text inspection; OCR/ASR are opt-in local CLI features.
+
+## Claude independent audit remediation — v0.5.2
+
+The 2026-11 independent review found real flaws not covered by the original
+ten acceptance gates. This release adds reproductions and fixes for duration
+parsing, absolute timeline intervals, constrained text transitions, negated
+music language, Arabic-only prompt caveats, deterministic Jev blocking, memory
+packaging, robust browser history, video verdict clarity, whitelist reviews,
+SAR/rotation, sampled silent audio and local-protocol media parsing.
+See [audit remediation](docs/CLAUDE_AUDIT_REMEDIATION_AR.md).
+
+**Honest limits:** sampled OCR/ASR are probabilistic evidence, not verified
+pronunciation or subtitle compliance. Browser QA asks for manual whole-video
+whitelist review. Local CLI OCR/ASR require optional tooling, and real provider
+APIs + multilingual real-world benchmarks remain outside this release.
