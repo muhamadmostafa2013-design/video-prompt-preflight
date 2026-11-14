@@ -25,7 +25,15 @@ class Simulation:
 def simulate_scene(scene: dict) -> Simulation:
     duration = float(scene.get("duration_seconds", 10) or 10)
     timeline = scene.get("timeline", []) or []
-    total = sum(float(e.get("seconds", 0) or 0) for e in timeline if isinstance(e, dict))
+    total = 0.0
+    for event in timeline:
+        if not isinstance(event, dict):
+            continue
+        if "start" in event:
+            start = float(event["start"])
+            total = max(total, float(event.get("end", start + float(event.get("seconds", 0)))))
+        else:
+            total += float(event.get("seconds", 0) or 0)
     arabic = str((scene.get("spoken") or {}).get("arabic", ""))
     wc = word_count(arabic)
     # Conservative natural short-form Egyptian Arabic pacing baseline.
