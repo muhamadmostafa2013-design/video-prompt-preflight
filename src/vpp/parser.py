@@ -94,11 +94,14 @@ def _extract_screen_text(text: str) -> list[str]:
                     capture = False
             continue
 
-        marker_hit = any(m in low for m in _MARKERS)
+        # Only a recognized section heading can begin capture. An ordinary
+        # imperative such as "show dramatic sunset" is NOT a text block.
+        header = low.split(":", 1)[0].strip()
+        marker_hit = header in _MARKERS and (":" in line or low in _MARKERS)
         if capture and line.endswith(":") and not marker_hit:
             capture = False
             continue
-        if marker_hit and (line.endswith(":") or low in _MARKERS or low.startswith(tuple(_MARKERS))):
+        if marker_hit:
             capture = True
             capture_budget = 8
             if ":" in line:
@@ -154,9 +157,16 @@ def parse_prompt(text: str) -> dict:
     # Global scene durations must not be confused with individual hold/action times.
     durations = []
     for match in _DURATION_RE.finditer(text):
-        beginning = text.rfind("\n", 0, match.start()) + 1
+        # Examine only the local clause: a total-duration phrase earlier in
+        # the same line must not turn a later "hold 2 seconds" into a conflict.
+        beginning = max(text.rfind("\n", 0, match.start()),
+                        text.rfind(".", 0, match.start()),
+                        text.rfind(";", 0, match.start()),
+                        text.rfind(",", 0, match.start())) + 1
         line_prefix = text[beginning:match.start()].lower()
-        line_suffix = text[match.end():text.find("\n", match.end()) if "\n" in text[match.end():] else len(text)].lower()
+        end_offsets = [i for sep in ("\n", ".", ";", ",")
+                       if (i := text.find(sep, match.end())) >= 0]
+        line_suffix = text[match.end():min(end_offsets) if end_offsets else len(text)].lower()
         if re.search(r"\b(?:hold|wait|pause|delay|after|before)\s+(?:for\s+)?$", line_prefix):
             continue
         if re.search(r"\d+\s*[-–—]\s*$", line_prefix):
