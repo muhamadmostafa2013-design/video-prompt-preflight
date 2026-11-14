@@ -72,7 +72,7 @@ def extract_features(text: str, scene: dict) -> dict:
         "exact_text_morph": exact_text_morph,
         "dialogue_cues": dialogue_cues,
         "multi_speaker_dialogue": dialogue_cues >= 2,
-        "json_like": stripped.startswith("{") or stripped.startswith("["),
+        "json_like": stripped.startswith(("{", "[")),
         "image_to_video_hint": bool(_IMAGE_VIDEO_RE.search(text)),
         "minimax_camera_command": bool(_MINIMAX_COMMAND_RE.search(text)),
         "high_motion_hint": "--motion high" in low or "high motion" in low,
