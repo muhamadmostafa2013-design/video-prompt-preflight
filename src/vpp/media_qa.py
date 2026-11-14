@@ -150,6 +150,8 @@ def inspect_video(
     sampled frames/transcripts can miss brief errors, speech or subtitle states.
     """
     scene = scene or {}
+    if not isinstance(scene, dict):
+        raise MediaQAError('Scene Spec must be a YAML/JSON object.')
     metadata = probe_video(path)
     checks: list[dict] = []
     expected_duration = scene.get("duration_seconds")
@@ -181,13 +183,17 @@ def inspect_video(
             )
         for word in words:
             matched = [f["seconds"] for f in frame_evidence
-                       if _norm(word) and _norm(word) in _norm(f["text"])]
+                       if _norm(word) and f" {_norm(word)} " in f" {_norm(f['text'])} "]
             checks.append({"name": "exact_screen_text", "expected": word,
                            "status": "observed" if matched else "review",
                            "sampled_at_seconds": matched})
     elif words:
         checks.append({"name": "exact_screen_text", "status": "review",
                        "reason": "OCR not enabled; inspect all text states manually"})
+
+    if required_speech and not metadata["has_audio"]:
+        checks.append({"name": "expected_speech_audio", "status": "fail",
+                       "reason": "Scene requires speech but no audio stream is present"})
 
     if asr_model is not None:
         if not metadata["has_audio"]:
