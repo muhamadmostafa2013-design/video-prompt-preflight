@@ -127,6 +127,7 @@ test.describe('deep QA: mobile, review and security',()=>{
 
   test('CSP-compatible failure deletion and local storage persist correctly',async({page})=>{
     await page.goto('/');
+    await page.locator('details.advanced > summary').click();
     await page.locator('#failureCategory').fill('timing');
     await page.locator('#failureObserved').fill('too short');
     await page.locator('#failureExpected').fill('exact length');
