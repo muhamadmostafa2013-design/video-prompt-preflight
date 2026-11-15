@@ -99,7 +99,7 @@ def analyze_scene(scene: dict) -> Report:
         for event in events:
             try:
                 if not isinstance(event, dict):
-                    raise ValueError("timeline event must be an object")
+                    raise TypeError("timeline event must be an object")
                 seconds = float(event.get("seconds", 0))
                 if "start" in event:
                     start = float(event["start"])
