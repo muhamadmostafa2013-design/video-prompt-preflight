@@ -90,8 +90,7 @@ def _timeline_first(scene: dict) -> str:
     lines = [f"SHOT: {scene.get('aspect_ratio', '9:16')}, exact {scene.get('duration_seconds', 10)}s."]
     if scene.get("style"):
         lines.append("Style: " + "; ".join(map(str, scene["style"])) + ".")
-    for event in _timed_events(scene):
-        lines.append(event)
+    lines.extend(_timed_events(scene))
     if scene.get("screen_text"):
         lines.append("Exact visible strings only: " + " | ".join(map(str, scene["screen_text"])))
     spoken = (scene.get("spoken") or {}).get("arabic")
