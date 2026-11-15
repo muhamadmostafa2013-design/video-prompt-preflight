@@ -2,7 +2,7 @@
 
 An open-source, local-first **preflight linter + knowledge engine + triple-review prompt factory** for AI video generation.
 
-VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.3 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
+VPP catches preventable prompt failures *before* you spend a generation credit. v0.5.4 keeps the deterministic local core, expands the multi-provider Video Prompt Constitution and Output QA, and adds an optional Jev semantic-judge layer for probabilistic candidate ranking and release gating.
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
@@ -10,7 +10,7 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
 
-## v0.5.3: local Triple Verify + optional Jev judge and media QA
+## v0.5.4: local Triple Verify + optional Jev judge and media QA
 
 ```bash
 vpp lint-prompt examples/ver_scene_1_prompt.txt
@@ -171,7 +171,7 @@ Optional local-only ASR needs the `media-asr` extra and a pre-downloaded local f
 
 ## Roadmap
 
-- **v0.5.3 (current):** multi-provider preflight, three local review rounds, browser metadata/frames and opt-in local OCR/ASR evidence CLI.
+- **v0.5.4 (current):** multi-provider preflight, three local review rounds, browser metadata/frames and opt-in local OCR/ASR evidence CLI.
 - **Next:** independent real-video benchmarks, accessible manual QA workflow, secure optional judge proxy, provider adapters and cost budgets.
 - Generation APIs are deliberately not bundled: generator account credentials, per-video billing and explicit deployment permissions are needed.
 
@@ -210,3 +210,14 @@ APIs + multilingual real-world benchmarks remain outside this release.
 - Python CLI handles invalid input/YAML without raw tracebacks, and review-required inputs return status `3`.
 
 See [deep validation and residual risks](docs/TEST_EVIDENCE_v0.5.3.md). Passing tests does **not** certify real-world multilingual OCR/ASR accuracy or any provider API.
+
+
+## v0.5.4 intensive QA hardening
+- All three Python and browser candidate prompts preserve absolute timeline gaps, with the actual time ranges counted as hard requirements.
+- Structured Scene Spec lint now rejects invalid/nonfinite durations, malformed rules, timelines and text whitelists without crashes or changing the input.
+- Local knowledge pack access validates provider file names and refuses traversal paths.
+- Jev's scoring and release gate fail closed for NaN/infinite/malformed probabilities, and no candidate missing hard constraints can be promoted to RELEASE.
+- Offline QA regression suite covers provider packs, randomized Arabic/German/English prompts, CLI, real video/audio, media protocol safety and mocked external judges.
+- Extended Node core/triple review tests and mobile Chromium E2E checks are required in CI.
+
+**Scope:** local-first engineering beta. Real-world accuracy of multilingual OCR/ASR and paid provider SDK/API behavior are not certified by these tests.

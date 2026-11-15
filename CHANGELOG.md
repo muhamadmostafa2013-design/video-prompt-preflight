@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.4 — intensive correctness and safety tests
+- Corrected a critical A/B/C candidate-selection flaw that compressed absolute timeline gaps in the most highly scored candidate.
+- Made timing offsets part of the candidate hard-constraint coverage calculation.
+- Prevented crashes/false success on invalid or nonfinite Scene Spec durations, timeline, rules and text-whitelist fields.
+- Fail-closed Jev probabilities and candidate ranks on NaN/Infinity; incomplete hard constraints can never be promoted to RELEASE.
+- Rejected provider knowledge-pack path traversal from direct library calls.
+- Added provider-pack checks, deterministic multilingual fuzz cases, real local video/audio/unknown-protocol tests, CLI integration and simulated SDK boundary tests.
+- Expanded real Chromium mobile, manual quality-review and storage interaction checks; maintained local-only scope.
+- All conclusions still depend on reproducible CI and do not certify stochastic model outputs.
+
+
 ## 0.5.3 — deep test gates, browser parity and privacy hardening
 - Closed hidden parser flaws: falsely captured on-screen text, missed negation and same-line durations; added strict nonoverlapping timeline validation.
 - Brought Python and browser parsers into closer agreement with 13 shared golden cases, including absolute event times and negative instructions.

@@ -88,6 +88,16 @@ window.VPP = window.VPP || {};
     return x.length>1?x:[];
   };
 
+  const timedEvents=scene=>{
+    let cursor=0;
+    return (scene.timeline||[]).map(e=>{
+      const start=e.start===undefined?cursor:Number(e.start);
+      const end=e.end===undefined?start+Number(e.seconds||0):Number(e.end);
+      cursor=end;
+      return `${start}-${end}s ${e.action}`;
+    });
+  };
+
   const coverage=(scene,prompt)=>{
     const r=scene.rules||{},req=[];
     if(scene.text_whitelist?.length)req.push(...scene.text_whitelist);
@@ -96,6 +106,7 @@ window.VPP = window.VPP || {};
     if(r.no_background_music)req.push("music");
     if(r.presenter_arabic_only)req.push("Egyptian Arabic","German");
     if(r.same_presenter)req.push("presenter");
+    req.push(...timedEvents(scene).map(line=>line.split(" ",1)[0]));
     if(!req.length)return 100;
     return Math.round(req.filter(x=>prompt.toLowerCase().includes(String(x).toLowerCase())).length/req.length*100);
   };
@@ -109,7 +120,7 @@ window.VPP = window.VPP || {};
       scene.style?.length?`Style: ${scene.style.join("; ")}.`:"",
       scene.spoken?.arabic?`Arabic dialogue: "${scene.spoken.arabic}"`:"",
       scene.screen_text?.length?`Exact screen text: ${scene.screen_text.join(" | ")}.`:"",
-      safeEvents.length?`Ordered beats: ${safeEvents.map(e=>e.action).join("; ")}.`:"",
+      safeEvents.length?`Timed beats: ${timedEvents({...scene,timeline:safeEvents}).join("; ")}.`:"",
       ...contract(scene)
     ].filter(Boolean).join("\n");
 

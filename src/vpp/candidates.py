@@ -53,9 +53,21 @@ def _safe_events(scene: dict) -> list[dict]:
     for event in scene.get("timeline", []) or []:
         action = str(event.get("action", ""))
         if screen_text:
-            action = _safe_text_action(action)
+            action = _safe_text_action(action, screen_text)
         out.append({**event, "action": action})
     return out
+
+
+def _timed_events(scene: dict) -> list[str]:
+    """Preserve absolute beat boundaries across every A/B/C candidate."""
+    cursor = 0.0
+    output = []
+    for event in _safe_events(scene):
+        start = float(event.get("start", cursor))
+        end = float(event.get("end", start + float(event.get("seconds", 0))))
+        output.append(f"{start:g}-{end:g}s {str(event.get('action', '')).strip()}")
+        cursor = end
+    return output
 
 
 def _minimal(scene: dict) -> str:
@@ -67,9 +79,9 @@ def _minimal(scene: dict) -> str:
         parts.append(f'Arabic dialogue: "{spoken}"')
     if scene.get("screen_text"):
         parts.append("Exact screen text: " + " | ".join(map(str, scene["screen_text"])) + ".")
-    events = _safe_events(scene)
+    events = _timed_events(scene)
     if events:
-        parts.append("Ordered beats: " + "; ".join(str(e.get("action", "")) for e in events) + ".")
+        parts.append("Timed beats: " + "; ".join(events) + ".")
     parts.extend(_contract(scene))
     return "\n".join(parts)
 
@@ -78,11 +90,8 @@ def _timeline_first(scene: dict) -> str:
     lines = [f"SHOT: {scene.get('aspect_ratio', '9:16')}, exact {scene.get('duration_seconds', 10)}s."]
     if scene.get("style"):
         lines.append("Style: " + "; ".join(map(str, scene["style"])) + ".")
-    cursor = 0.0
-    for e in _safe_events(scene):
-        sec = float(e.get("seconds", 0) or 0)
-        lines.append(f"{cursor:g}-{cursor+sec:g}s: {e.get('action', '').strip()}")
-        cursor += sec
+    for event in _timed_events(scene):
+        lines.append(event)
     if scene.get("screen_text"):
         lines.append("Exact visible strings only: " + " | ".join(map(str, scene["screen_text"])))
     spoken = (scene.get("spoken") or {}).get("arabic")
@@ -107,6 +116,7 @@ def _coverage(scene: dict, prompt: str) -> int:
         required.extend(["Egyptian Arabic", "German"])
     if rules.get("same_presenter"):
         required.append("presenter")
+    required.extend(event.split(" ", 1)[0] for event in _timed_events(scene))
     if not required:
         return 100
     found = sum(1 for item in required if item.lower() in prompt.lower())
