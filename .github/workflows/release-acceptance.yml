@@ -39,7 +39,7 @@ jobs:
         run: |
           for f in web/*.js; do node --check "$f"; done
       - name: Browser DOM and shared Python/JS semantic conformance
-        run: node --test tests/browser_smoke.cjs tests/browser_conformance.cjs
+        run: node --test tests/browser_smoke.cjs tests/browser_conformance.cjs tests/browser_intensive.cjs
       - name: Ruff full lint
         run: ruff check .
       - name: Full Python regression suite

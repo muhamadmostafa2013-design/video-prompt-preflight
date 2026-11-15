@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -44,10 +45,19 @@ def derive_gate(
     score_confidence: float = 1.0,
     choice_confidence: float = 1.0,
 ) -> JevGateDecision:
-    hard = max(0.0, min(1.0, float(hard_constraints_probability)))
-    fit = max(0.0, min(1.0, float(provider_fit_probability)))
-    review = max(0.0, min(1.0, float(human_review_probability)))
-    risk = max(0.0, min(4.0, float(risk_score)))
+    values = [hard_constraints_probability, provider_fit_probability,
+              human_review_probability, risk_score, score_confidence, choice_confidence]
+    try:
+        parsed = [float(x) for x in values]
+        valid = all(math.isfinite(x) for x in parsed)
+        valid = valid and all(0 <= x <= 1 for x in (parsed[:3] + parsed[4:]))
+        valid = valid and 0 <= parsed[3] <= 4
+    except (TypeError, ValueError, OverflowError):
+        valid = False
+    if not valid:
+        return JevGateDecision("block", 0.0, 0.0, 1.0, 4.0,
+                               "invalid_probability_data", 0.0)
+    hard, fit, review, risk, score_confidence, choice_confidence = parsed
 
     certainty = [
         abs(hard - 0.5) * 2,
@@ -90,12 +100,22 @@ def candidate_utility(
     Hard constraints are a gate, not merely another preference. A candidate
     with deterministic coverage below 100% is heavily penalized.
     """
-    hard = max(0.0, min(1.0, float(hard_constraints_probability)))
-    fit = max(0.0, min(1.0, float(provider_fit_probability)))
-    ambiguity = max(0.0, min(1.0, float(ambiguity_probability)))
-    risk = max(0.0, min(4.0, float(risk_score))) / 4.0
-    det = max(0.0, min(100.0, float(deterministic_score))) / 100.0
-    coverage = max(0, min(100, int(hard_constraint_coverage)))
+    try:
+        values = [float(x) for x in (hard_constraints_probability,
+                  provider_fit_probability, ambiguity_probability, risk_score,
+                  deterministic_score, hard_constraint_coverage)]
+        valid = all(math.isfinite(v) for v in values)
+        valid = valid and all(0 <= v <= 1 for v in values[:3])
+        valid = valid and 0 <= values[3] <= 4 and 0 <= values[4] <= 100
+        valid = valid and 0 <= values[5] <= 100
+    except (TypeError, ValueError, OverflowError):
+        valid = False
+    if not valid:
+        return -2.0
+    hard, fit, ambiguity = values[:3]
+    risk = values[3] / 4.0
+    det = values[4] / 100.0
+    coverage = int(values[5])
 
     utility = (
         hard * 0.42
@@ -113,28 +133,37 @@ def candidate_utility(
 
 
 def rank_candidate_scores(rows: list[dict[str, Any]]) -> list[JevCandidateScore]:
+    """Normalize untrusted SDK numbers; never serialize NaN or rank it as safe."""
+    def number(value: Any, low: float, high: float, fallback: float) -> tuple[float, bool]:
+        try:
+            parsed = float(value)
+            if math.isfinite(parsed) and low <= parsed <= high:
+                return parsed, True
+        except (TypeError, ValueError, OverflowError):
+            pass
+        return fallback, False
+
     ranked: list[JevCandidateScore] = []
     for row in rows:
+        hard, ok_h = number(row.get("hard_constraints_probability"), 0, 1, 0)
+        fit, ok_f = number(row.get("provider_fit_probability"), 0, 1, 0)
+        ambiguity, ok_a = number(row.get("ambiguity_probability"), 0, 1, 1)
+        risk, ok_r = number(row.get("risk_score"), 0, 4, 4)
+        det, ok_d = number(row.get("deterministic_score", 0), 0, 100, 0)
+        cov, ok_c = number(row.get("hard_constraint_coverage", 0), 0, 100, 0)
+        valid = all((ok_h, ok_f, ok_a, ok_r, ok_d, ok_c))
         ranked.append(JevCandidateScore(
-            key=str(row["key"]),
-            name=str(row["name"]),
-            hard_constraints_probability=float(row["hard_constraints_probability"]),
-            provider_fit_probability=float(row["provider_fit_probability"]),
-            ambiguity_probability=float(row["ambiguity_probability"]),
-            risk_score=float(row["risk_score"]),
-            deterministic_score=float(row.get("deterministic_score", 0)),
-            hard_constraint_coverage=int(row.get("hard_constraint_coverage", 0)),
+            key=str(row["key"]), name=str(row["name"]),
+            hard_constraints_probability=hard, provider_fit_probability=fit,
+            ambiguity_probability=ambiguity, risk_score=risk,
+            deterministic_score=det, hard_constraint_coverage=int(cov),
             utility=candidate_utility(
-                hard_constraints_probability=float(row["hard_constraints_probability"]),
-                provider_fit_probability=float(row["provider_fit_probability"]),
-                ambiguity_probability=float(row["ambiguity_probability"]),
-                risk_score=float(row["risk_score"]),
-                deterministic_score=float(row.get("deterministic_score", 0)),
-                hard_constraint_coverage=int(row.get("hard_constraint_coverage", 0)),
-            ),
+                hard_constraints_probability=hard, provider_fit_probability=fit,
+                ambiguity_probability=ambiguity, risk_score=risk,
+                deterministic_score=det, hard_constraint_coverage=int(cov),
+            ) if valid else -2.0,
         ))
     return sorted(ranked, key=lambda x: x.utility, reverse=True)
-
 
 def _compact_findings(review_result: dict) -> list[dict[str, Any]]:
     findings = []
@@ -454,6 +483,17 @@ def jev_review(
             model=model,
             client=client,
         )
+        winner = ranking["winner"]
+        if winner["hard_constraint_coverage"] < 100 or winner["utility"] < 0:
+            return {
+                "candidate_judge": ranking,
+                "semantic_gate": {"engine": "deterministic_block",
+                                  "decision": {"decision": "block",
+                                               "dominant_risk": "candidate_constraint_loss_or_invalid_score",
+                                               "confidence": 1.0}},
+                "final_prompt": ranking["winner_prompt"],
+                "decision": "block",
+            }
         selected = dict(review_result)
         selected["final_prompt"] = ranking["winner_prompt"]
 

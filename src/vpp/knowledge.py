@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,9 @@ class EvidenceFinding:
 
 
 def load_pack(name: str) -> dict:
+    # Direct library access must never traverse the knowledge-pack directory.
+    if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", name):
+        raise ValueError("Invalid provider knowledge pack name.")
     path = KNOWLEDGE_DIR / f"{name}.yml"
     if not path.exists():
         return {"provider": name, "name": name, "rules": []}

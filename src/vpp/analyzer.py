@@ -17,19 +17,49 @@ def _add(report: Report, rule_id: str, severity: str, message: str, suggestion: 
 def analyze_scene(scene: dict) -> Report:
     """Analyze a structured scene specification without calling any LLM."""
     report = Report()
+    if not isinstance(scene, dict):
+        _add(report, "scene.type", "error", "Scene Spec must be an object.", "Supply a YAML or JSON object.", 40)
+        return report
+
+    rules = scene.get("rules", {})
+    if rules is None:
+        rules = {}
+    if not isinstance(rules, dict):
+        _add(report, "rules.type", "error", "rules must be a mapping.", "Use a YAML/JSON object for rules.", 35)
+        rules = {}
+    else:
+        rules = dict(rules)  # Analysis must not mutate the original Scene Spec.
 
     duration = scene.get("duration_seconds")
-    if not isinstance(duration, (int, float)) or duration <= 0:
+    try:
+        if (isinstance(duration, bool) or not isinstance(duration, (int, float))
+                or not math.isfinite(duration) or duration <= 0 or duration > 86400):
+            duration = None
+    except (OverflowError, TypeError, ValueError):
+        duration = None
+    if duration is None:
         _add(report, "duration.missing", "error", "A positive duration_seconds value is required.", "Set duration_seconds, e.g. 10.", 30)
     elif duration > 12:
         _add(report, "duration.long", "warning", f"Scene duration is {duration}s.", "For short-form generation, consider splitting the scene.", 8)
 
-    screen_text = scene.get("screen_text", []) or []
-    if not isinstance(screen_text, list):
+    screen_text = scene.get("screen_text", [])
+    if screen_text is None:
+        screen_text = []
+    if not isinstance(screen_text, list) or any(not isinstance(x, str) for x in screen_text):
         _add(report, "screen_text.type", "error", "screen_text must be a list of exact strings.", "Convert screen_text to a YAML/JSON list.", 25)
         screen_text = []
 
-    rules = scene.get("rules", {}) or {}
+    limits = {"max_screen_text_items": (int, 6), "max_events_per_10s": (int, 5),
+              "max_spoken_words_per_second": (float, 2.7)}
+    for key, (cast, default) in limits.items():
+        try:
+            value = cast(rules.get(key, default))
+            if isinstance(rules.get(key), bool) or not math.isfinite(value) or value <= 0:
+                raise ValueError("invalid rule bound")
+        except (ValueError, TypeError, OverflowError):
+            _add(report, "rules.invalid", "error", f"Invalid rule setting: {key}.",
+                 "Use finite positive numeric limits.", 30)
+            rules[key] = default
     if rules.get("no_arabic_on_screen", False):
         bad = [x for x in screen_text if contains_arabic(str(x))]
         if bad:
@@ -39,13 +69,26 @@ def analyze_scene(scene: dict) -> Report:
     if len(screen_text) > max_items:
         _add(report, "screen_text.crowded", "warning", f"{len(screen_text)} screen-text items requested; limit is {max_items}.", "Reduce simultaneous text or split the scene.", 12)
 
-    whitelist = set(scene.get("text_whitelist", []) or [])
+    raw_whitelist = scene.get("text_whitelist", [])
+    if raw_whitelist is None:
+        raw_whitelist = []
+    if not isinstance(raw_whitelist, list) or any(not isinstance(x, str) for x in raw_whitelist):
+        _add(report, "screen_text.whitelist_type", "error", "text_whitelist must be a list of strings.",
+             "Provide only exact text strings.", 35)
+        raw_whitelist = []
+    whitelist = set(raw_whitelist)
     if whitelist:
         extras = [x for x in screen_text if x not in whitelist]
         if extras:
             _add(report, "screen_text.whitelist", "error", f"Screen text outside whitelist: {extras}", "Use only exact whitelisted strings.", 35)
 
-    events = scene.get("timeline", []) or []
+    events = scene.get("timeline", [])
+    if events is None:
+        events = []
+    if not isinstance(events, list):
+        _add(report, "timeline.type", "error", "timeline must be a list of events.",
+             "Provide a list of time intervals.", 35)
+        events = []
     if duration and isinstance(events, list):
         max_events = int(rules.get("max_events_per_10s", 5)) * max(1, round(float(duration) / 10))
         if len(events) > max_events:
@@ -55,6 +98,8 @@ def analyze_scene(scene: dict) -> Report:
         previous_end = 0.0
         for event in events:
             try:
+                if not isinstance(event, dict):
+                    raise TypeError("timeline event must be an object")
                 seconds = float(event.get("seconds", 0))
                 if "start" in event:
                     start = float(event["start"])
@@ -110,6 +155,10 @@ def analyze_scene(scene: dict) -> Report:
                 )
 
     spoken = scene.get("spoken", {}) or {}
+    if not isinstance(spoken, dict):
+        _add(report, "spoken.type", "error", "spoken must be an object.",
+             "Supply dialogue as structured fields.", 30)
+        spoken = {}
     arabic = str(spoken.get("arabic", ""))
     max_wps = float(rules.get("max_spoken_words_per_second", 2.7))
     if duration and arabic:
@@ -124,8 +173,15 @@ def analyze_scene(scene: dict) -> Report:
             _add(report, "audio.german_presenter", "error", "German speech is assigned to the Arabic presenter.", "Use pauses and add verified German audio in post-production.", 40)
 
     forbidden = scene.get("forbidden", []) or []
-    prompt_notes = " ".join(str(x) for x in scene.get("notes", []) or [])
+    if not isinstance(forbidden, list):
+        _add(report, "forbidden.type", "error", "forbidden must be a list.", "Provide list of strings.", 25)
+        forbidden = []
+    raw_notes = scene.get("notes", []) or []
+    if isinstance(raw_notes, str):
+        raw_notes = [raw_notes]
+    prompt_notes = " ".join(str(x) for x in raw_notes) if isinstance(raw_notes, list) else ""
     for phrase in forbidden:
+        phrase = str(phrase)
         if phrase and phrase.lower() in prompt_notes.lower():
             _add(report, "forbidden.conflict", "error", f"Forbidden instruction appears in notes: {phrase}", "Remove the conflicting instruction.", 30)
 
