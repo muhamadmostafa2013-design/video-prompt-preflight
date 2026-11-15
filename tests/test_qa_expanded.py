@@ -17,7 +17,7 @@ from vpp.candidates import build_candidates
 from vpp.compiler import compile_scene
 from vpp.jev_judge import candidate_utility, derive_gate
 from vpp.knowledge import evaluate_knowledge, load_pack
-from vpp.media_qa import MediaQAError, detect_silent_audio, inspect_video, probe_video, sample_frames
+from vpp.media_qa import MediaQAError, inspect_video, probe_video, sample_frames
 from vpp.optimizer import optimize_prompt
 from vpp.parser import parse_prompt
 from vpp.prompt_analyzer import analyze_prompt
@@ -100,11 +100,11 @@ def test_invalid_rule_settings_do_not_mutate_caller():
 
 @pytest.mark.parametrize("bad", [math.nan, math.inf, -math.inf])
 def test_nonfinite_jev_scores_always_block(bad):
-    kwargs = dict(
-        hard_constraints_probability=.99, provider_fit_probability=.99,
-        human_review_probability=.01, risk_score=.1, dominant_risk="none",
-        score_confidence=.99, choice_confidence=.99
-    )
+    kwargs = {
+        "hard_constraints_probability": .99, "provider_fit_probability": .99,
+        "human_review_probability": .01, "risk_score": .1, "dominant_risk": "none",
+        "score_confidence": .99, "choice_confidence": .99,
+    }
     for key in ("hard_constraints_probability", "provider_fit_probability",
                 "human_review_probability", "risk_score",
                 "score_confidence", "choice_confidence"):
