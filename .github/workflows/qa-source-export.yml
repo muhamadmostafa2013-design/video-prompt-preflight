@@ -1,0 +1,21 @@
+name: qa-source-export
+on:
+  push:
+    branches: ['qa/intensive-v0.5.3-20261115']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive tracked repository source for isolated QA
+        run: git archive --format=tar.gz --output=/tmp/vpp-source.tar.gz HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vpp-qa-source
+          path: /tmp/vpp-source.tar.gz
+          retention-days: 2
+          if-no-files-found: error
