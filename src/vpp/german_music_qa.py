@@ -32,9 +32,9 @@ def _phrase_count(lyrics: str, phrase: str) -> int:
 
 def _checked_spec(spec: Any) -> dict[str, Any]:
     if not isinstance(spec, dict):
-        raise ValueError("Song spec must be a YAML/JSON object.")
+        raise TypeError("Song spec must be a YAML/JSON object.")
     if not isinstance(spec.get("lyrics"), str):
-        raise ValueError("lyrics must be a string.")
+        raise TypeError("lyrics must be a string.")
     if len(spec["lyrics"]) > MAX_LYRICS:
         raise ValueError("lyrics exceed the 16000-character local QA limit.")
     vocabulary = spec.get("target_vocabulary", [])
@@ -73,7 +73,7 @@ def review_song(spec: dict[str, Any]) -> dict[str, Any]:
 
     language = spec.get("language", "de").lower()
     cefr = spec.get("cefr", "A1")
-    age_min, age_max = spec.get("age_range", [6, 9])
+    age_min, _age_max = spec.get("age_range", [6, 9])
     repetitions = spec.get("min_repetitions", 2)
     words_per_line = spec.get("max_words_per_line", 12)
     bpm = spec.get("bpm", None)
