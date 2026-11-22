@@ -1,0 +1,19 @@
+type: video
+title: "Erster Tag an der Uni – Die Mensa"
+aspect_ratio: "9:16"
+scenes:
+  - duration_seconds: 8
+    prompt: |
+      Morning on a modern German university campus. Two university students are
+      in one natural eye-level camera shot. Student A asks in clear, natural
+      Standard German: "Entschuldigung, wo ist die Mensa?"
+      Student B responds in clear Standard German: "Geradeaus, dann links!"
+      Student B points toward the cafeteria. Keep each sentence spoken by
+      the correct person, with no additional words, no music and no captions.
+  - duration_seconds: 8
+    prompt: |
+      The same two university students are now standing outside the cafeteria.
+      Student A says in clear Standard German: "Vielen Dank!"
+      Student B says: "Gern geschehen!"
+      Friendly gestures and one calm eye-level camera shot; no other dialogue.
+      Keep the same people and outfits, no music, no generated text or captions.
