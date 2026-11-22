@@ -6,10 +6,10 @@ import base64
 import json
 import math
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -149,7 +149,7 @@ def generate_paid(job: dict[str, Any], prompts: list[str], out: Path, key: str) 
                     response_format={"type": "video",
                                      "duration": str(job["scenes"][index]["duration_seconds"]) + "s",
                                      "aspect_ratio": job["aspect_ratio"], "resolution": "720p"})
-            except Exception:
+            except Exception:  # noqa: BLE001 -- sanitize unknown provider SDK failures
                 raise ProductionError("Gemini video request failed. Check plan, model access and usage logs privately.") from None
             video = getattr(response, "output_video", None)
             blob = _decode(getattr(video, "data", None))
@@ -157,7 +157,7 @@ def generate_paid(job: dict[str, Any], prompts: list[str], out: Path, key: str) 
         else:
             try:
                 response = client.interactions.create(model=MUSIC_MODEL, input=prompt)
-            except Exception:
+            except Exception:  # noqa: BLE001 -- sanitize unknown provider SDK failures
                 raise ProductionError("Gemini music request failed. Check plan, model access and usage logs privately.") from None
             audio = getattr(response, "output_audio", None)
             blob = _decode(getattr(audio, "data", None))
@@ -213,8 +213,8 @@ def render(job: dict[str, Any], assets: list[Path], out: Path) -> Path:
                 args += ["-f", "lavfi", "-i",
                          "anullsrc=channel_layout=stereo:sample_rate=48000"]
             args += ["-map", "0:v:0", "-map", "0:a:0" if with_audio else "1:a:0",
-                     "-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-                            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p",
+                     "-vf", (f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+                            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p"),
                      "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
                      "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2",
                      "-shortest", str(normalized_path)]
