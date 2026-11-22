@@ -22,6 +22,7 @@ const document = {
 };
 const navigator = {clipboard: {async writeText(text) { assert.ok(text.length > 10); }}};
 document.getElementById("musicQaPanel");
+document.getElementById("musicLevel").value = "A1";
 const script = fs.readFileSync(path.join(__dirname, "../web/music-qa.js"), "utf8");
 vm.runInNewContext(script, {document, navigator, console, Set, RegExp}, {filename:"music-qa.js"});
 
