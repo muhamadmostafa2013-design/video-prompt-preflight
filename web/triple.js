@@ -156,7 +156,8 @@ window.VPP = window.VPP || {};
       .map(([name,prompt])=>{
         const tok=Math.max(1,Math.round(prompt.length/4));
         const neg=(prompt.match(/\b(?:no|not|never|without|avoid|don't|do not|must not)\b/gi)||[]).length;
-        const cov=scene.source_prompt&&!name.startsWith("SOURCE")?
+        const visualDetailRisk=/\b(?:student|customer|presenter|character|wardrobe|shirt|sweater|backpack|cafe|coffee|university|classroom|barista|camera|reference|lighting|counter|face|beard|hair|building|room)\b/i.test(scene.source_prompt||"");
+        const cov=scene.source_prompt&&visualDetailRisk&&!name.startsWith("SOURCE")?
           Math.min(99,coverage(scene,prompt)):coverage(scene,prompt);
         let score=100-Math.min(25,tok/30)-Math.min(20,neg*(provider==="runway"?3:1))-(100-cov)*.8;
         if(name.startsWith("C")&&scene.timeline?.length)score+=5;
