@@ -14,6 +14,7 @@ from typing import Any
 
 import yaml
 
+from .director import review_job
 from .german_music_qa import compile_song_prompt, review_song
 from .triple_review import triple_review
 
@@ -53,7 +54,15 @@ def validate_job(raw: dict[str, Any], root: Path) -> dict[str, Any]:
     aspect = raw.get("aspect_ratio", "9:16")
     if aspect not in ("9:16", "16:9"):
         raise ProductionError("Only 9:16 or 16:9 supported.")
-    job: dict[str, Any] = {"type": kind, "title": title, "aspect_ratio": aspect}
+    job: dict[str, Any] = {
+        "type": kind, "title": title, "aspect_ratio": aspect,
+        "learning_objective": raw.get("learning_objective"),
+        "cefr_level": raw.get("cefr_level"),
+        "learner_age": raw.get("learner_age"),
+        "target_phrases": raw.get("target_phrases"),
+        "cast": raw.get("cast"),
+        "continuity_anchor": raw.get("continuity_anchor"),
+    }
     if kind == "song":
         job["song_spec"] = _yaml(_root_file(root, raw.get("song_spec")))
     else:
@@ -70,20 +79,22 @@ def validate_job(raw: dict[str, Any], root: Path) -> dict[str, Any]:
                 raise ProductionError("Omni scene duration must be an integer 3..15 seconds.")
             if not isinstance(prompt, str) or not 20 <= len(prompt) <= 6500:
                 raise ProductionError("Scene prompt must be 20..6500 characters.")
-            job["scenes"].append({"id": index+1, "duration_seconds": duration, "prompt": prompt})
+            job["scenes"].append({"id": index+1, "duration_seconds": duration, "prompt": prompt,
+                                  "expected_dialogue": scene.get("expected_dialogue"),
+                                  "silent": scene.get("silent", False)})
         if sum(x["duration_seconds"] for x in job["scenes"]) > 90:
             raise ProductionError("90 seconds per run maximum.")
     return job
 
 
-def preflight(job: dict[str, Any]) -> dict[str, Any]:
+def evaluate_preflight(job: dict[str, Any]) -> dict[str, Any]:
+    """Return a full local report, including blocking findings, with no API calls."""
     if job["type"] == "song":
         qa = review_song(job["song_spec"])
-        if not qa["passed"]:
-            raise ProductionError("German Educational Music QA blocked song: " +
-                                  ", ".join(x["rule_id"] for x in qa["findings"]
-                                            if x["severity"] == "error"))
-        return {"qa": qa, "prompts": [compile_song_prompt(job["song_spec"])]}
+        prompts = [compile_song_prompt(job["song_spec"])] if qa["passed"] else []
+        director = review_job(job, prompts, music_report=qa)
+        return {"qa": qa, "prompts": prompts, "director": director}
+
     prompts = []
     reviews = []
     for scene in job["scenes"]:
@@ -95,15 +106,29 @@ def preflight(job: dict[str, Any]) -> dict[str, Any]:
             "subtitles or on-screen written text: captions are a postproduction task. "
             "No extra spoken words. Scene: " + scene["prompt"]
         )
+        anchor = job.get("continuity_anchor")
+        if isinstance(anchor, str) and anchor.strip():
+            prompt += " FIXED VISUAL CONTINUITY FOR ALL SCENES: " + anchor.strip()
         check = triple_review(prompt, provider="gemini_omni")
-        if not check["passed"]:
-            raise ProductionError(f"VPP Triple Verify blocked scene {scene['id']}.")
-        # Never silently replace exact dialogue with a heuristic prompt candidate.
         prompts.append(prompt)
-        reviews.append({"scene": scene["id"], "passed": True,
-                        "confidence": check.get("confidence_band"),
-                        "score": check.get("heuristic_score")})
-    return {"qa": reviews, "prompts": prompts}
+        reviews.append(check)
+    director = review_job(job, prompts, vpp_results=reviews)
+    return {"qa": [{"scene": idx + 1, "passed": bool(q.get("passed")),
+                    "confidence": q.get("confidence_band"),
+                    "score": q.get("heuristic_score")}
+                   for idx, q in enumerate(reviews)],
+            "prompts": prompts, "director": director}
+
+
+def preflight(job: dict[str, Any]) -> dict[str, Any]:
+    """Fail closed before any API call when the Director requires revisions."""
+    result = evaluate_preflight(job)
+    director = result["director"]
+    if not director["ready_for_generation"]:
+        reasons = [item["rule_id"] for item in director["findings"]]
+        prefix = "VPP Triple Verify" if "director.vpp.blocked" in reasons else "AI Prompt Director"
+        raise ProductionError(prefix + " blocked generation: " + ", ".join(reasons[:12]))
+    return result
 
 
 def estimated_usd(job: dict[str, Any]) -> float:
@@ -269,7 +294,8 @@ def produce(
     out.mkdir(parents=True, exist_ok=True)
     report = {
         "mode": mode, "type": job["type"], "model": VIDEO_MODEL if job["type"] == "video" else MUSIC_MODEL,
-        "preflight": checks["qa"], "estimated_usd": estimate,
+        "preflight": checks["qa"], "director": checks["director"],
+        "estimated_usd": estimate,
         "cost_note": "Estimate, NOT an actual API billing cap. External charges can differ.",
         "human_review_required": True,
     }

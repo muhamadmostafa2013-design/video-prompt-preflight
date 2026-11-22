@@ -90,6 +90,54 @@
   </section>
 
 
+
+  <section class="card" id="directorPanel" aria-labelledby="directorTitle">
+    <div class="section-title"><span class="icon">🎓</span><h2 id="directorTitle">AI Prompt Director</h2></div>
+    <p class="micro">Offline single-scene German educational preflight: objective, approved dialogue, target phrases, learner level, consistency and VPP review. For multi-scene videos and songs, use the Python Director CLI.</p>
+    <div class="advanced-grid" style="margin:12px 0">
+      <div class="mini">
+        <label for="directorObjective">Learning objective</label>
+        <input id="directorObjective" style="width:100%" placeholder="Learners can ask for directions ..." />
+        <label for="directorLevel">CEFR level</label>
+        <select id="directorLevel">
+          <option value="pre-A1">pre-A1</option><option value="A1">A1</option>
+          <option value="A2">A2</option><option value="B1">B1</option>
+          <option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
+        </select>
+        <label for="directorMinAge">Minimum learner age</label>
+        <input id="directorMinAge" type="number" min="3" max="100" value="17" />
+        <label for="directorMaxAge">Maximum learner age</label>
+        <input id="directorMaxAge" type="number" min="3" max="100" value="25" />
+        <label for="directorDuration">Duration (seconds)</label>
+        <input id="directorDuration" type="number" min="3" max="15" value="8" />
+      </div>
+      <div class="mini">
+        <label for="directorTargets">Teaching phrases (one per line)</label>
+        <textarea id="directorTargets" lang="de" spellcheck="false" style="min-height:90px"></textarea>
+        <label for="directorCast">Cast (comma-separated)</label>
+        <input id="directorCast" style="width:100%" placeholder="Student A, Student B" />
+        <label for="directorSpeaker">Who says the approved line?</label>
+        <input id="directorSpeaker" style="width:100%" value="Student A" />
+        <label for="directorDialogue">Exact German dialogue</label>
+        <textarea id="directorDialogue" lang="de" spellcheck="false" style="min-height:95px"></textarea>
+      </div>
+    </div>
+    <label for="directorScene">Scene prompt</label>
+    <textarea id="directorScene" dir="auto" spellcheck="false" style="min-height:155px"></textarea>
+    <label for="directorAnchor">Optional consistent visual description</label>
+    <input id="directorAnchor" style="width:100%" placeholder="Same hair, clothes, voice, lighting ..." />
+    <div class="actions">
+      <button class="primary" type="button" id="directorCheck">Run final review</button>
+      <button class="secondary" type="button" id="directorExample">Load university example</button>
+      <button class="secondary" type="button" id="directorCopy" disabled>Copy approved prompt</button>
+    </div>
+    <p id="directorStatus" role="status" aria-live="polite">Not yet reviewed</p>
+    <div id="directorFindings" class="mini" aria-label="Director review findings"></div>
+    <h3>Approved generator prompt</h3>
+    <pre id="directorFinalPrompt" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+    <p class="micro">Text-only checks cannot certify full German grammar, pronunciation or final video quality.</p>
+  </section>
+
   <section class="card" id="musicQaPanel" aria-labelledby="musicQaTitle">
     <div class="section-title"><span class="icon">🎵</span><h2 id="musicQaTitle">German Educational Music QA</h2></div>
     <p class="micro">Check original German learning-song lyrics before generation. Offline text checks only: pronunciation, audio quality, grammatical completeness and music rights still need human review.</p>
@@ -145,6 +193,6 @@
   <div class="route"><b>The whole movie:</b> Prompt → Constitution Check → Safer Prompt → Generate → Output QA → Learn from bloopers</div>
   <footer>Evidence tiers: A = official · B = cross-platform/reproduced · C = community empirical · D = hypothesis. VPP still cannot promise a stochastic model won't discover experimental cinema. 🎭</footer>
 </main>
-<script src="core.js"></script><script src="triple.js"></script><script src="constitution.js"></script><script src="output-qa.js"></script><script src="ui.js"></script><script src="music-qa.js"></script>
+<script src="core.js"></script><script src="triple.js"></script><script src="constitution.js"></script><script src="output-qa.js"></script><script src="ui.js"></script><script src="director.js"></script><script src="music-qa.js"></script>
 </body>
 </html>

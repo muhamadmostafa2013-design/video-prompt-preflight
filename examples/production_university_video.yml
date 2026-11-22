@@ -1,8 +1,21 @@
 type: video
 title: "Erster Tag an der Uni – Die Mensa"
 aspect_ratio: "9:16"
+learning_objective: "Learners can ask for university cafeteria directions and respond politely in German."
+cefr_level: A1
+learner_age: [17, 25]
+target_phrases:
+  - "Entschuldigung, wo ist die Mensa?"
+  - "Geradeaus, dann links!"
+  - "Vielen Dank!"
+  - "Gern geschehen!"
+cast: ["Student A", "Student B"]
+continuity_anchor: "Student A has curly brown hair and a navy jacket. Student B has short dark hair, a grey sweater and a green backpack. Keep their age, faces, clothes and voices consistent."
 scenes:
   - duration_seconds: 8
+    expected_dialogue:
+      - {speaker: "Student A", text: "Entschuldigung, wo ist die Mensa?"}
+      - {speaker: "Student B", text: "Geradeaus, dann links!"}
     prompt: |
       Morning on a modern German university campus. Two university students are
       in one natural eye-level camera shot. Student A asks in clear, natural
@@ -11,6 +24,9 @@ scenes:
       Student B points toward the cafeteria. Keep each sentence spoken by
       the correct person, with no additional words, no music and no captions.
   - duration_seconds: 8
+    expected_dialogue:
+      - {speaker: "Student A", text: "Vielen Dank!"}
+      - {speaker: "Student B", text: "Gern geschehen!"}
     prompt: |
       The same two university students are now standing outside the cafeteria.
       Student A says in clear Standard German: "Vielen Dank!"

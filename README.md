@@ -255,3 +255,26 @@ python -m vpp.production --spec examples/production_university_video.yml --mode 
 
 For exact options, key safety instructions, paid approval and limits see
 [Gemini Production Engine guide](docs/GEMINI_PRODUCTION_ENGINE.md).
+
+## AI Prompt Director (final German educational preflight)
+
+The new **AI Prompt Director** verifies that a video/song production job has
+an explicit learning goal, CEFR/age profile, target phrases, correct declared
+German speech, a stable cast for multi-scene stories, and existing VPP/German
+Music QA approval **before any paid Gemini call**.
+
+Run the local review at zero API cost:
+
+```bash
+vpp director-review examples/production_university_video.yml --json
+vpp director-review examples/production_animals_song.yml --json
+vpp director-review examples/production_university_video.yml --prompt-out ready-prompt.txt
+```
+
+Decisions: **ready_for_generation**, **needs_revision**, or **blocked**.
+Only a ready result can release the final prompt or enter production.
+There is also a browser-only single-scene review panel in Director's Room.
+
+A successful deterministic preflight **does not certify** German
+pronunciation, full grammar, learning outcomes or the rendered video.
+See [AI Prompt Director guide](docs/AI_PROMPT_DIRECTOR.md).

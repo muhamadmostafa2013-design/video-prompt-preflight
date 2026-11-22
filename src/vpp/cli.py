@@ -298,6 +298,36 @@ def cmd_compile_song(args: argparse.Namespace) -> int:
         print(prompt, end="")
     return 3 if report["decision"] == "review" else 0
 
+
+def cmd_director_review(args: argparse.Namespace) -> int:
+    """Full offline production preflight without contacting Gemini."""
+    from .production import _yaml, evaluate_preflight, validate_job
+
+    root = Path(args.root).resolve()
+    job = validate_job(_yaml(Path(args.file)), root)
+    result = evaluate_preflight(job)
+    report = result["director"]
+    payload = {"director": report, "source_qa": result["qa"]}
+    if args.output:
+        Path(args.output).write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.prompt_out and report["ready_for_generation"]:
+        Path(args.prompt_out).write_text(
+            "\n\n--- NEXT SCENE ---\n\n".join(result["prompts"]) + "\n", encoding="utf-8")
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"{report['decision'].upper()} | AI Prompt Director | "
+              f"{len(report['findings'])} finding(s)")
+        for finding in report["findings"]:
+            print(f"[{finding['severity'].upper()}] {finding['stage']} / "
+                  f"{finding['rule_id']}: {finding['message']}")
+            print(f"  -> {finding['suggestion']}")
+        print("No remote checks. Generated output still requires a human review.")
+    return 2 if report["decision"] == "blocked" else (
+        3 if report["decision"] == "needs_revision" else 0)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="vpp", description="Video Prompt Preflight")
     sub = p.add_subparsers(dest="command", required=True)
@@ -377,6 +407,15 @@ def build_parser() -> argparse.ArgumentParser:
     song.add_argument("file")
     song.add_argument("-o", "--output")
     song.set_defaults(func=cmd_compile_song)
+
+
+    director = sub.add_parser("director-review", help="AI Prompt Director educational QA and final Gemini gate")
+    director.add_argument("file", help="Production YAML/JSON job spec")
+    director.add_argument("--root", default=".", help="Repository root for relative song specs")
+    director.add_argument("--json", action="store_true")
+    director.add_argument("-o", "--output", help="Write full JSON preflight report")
+    director.add_argument("--prompt-out", help="Write final generator prompts only if ready")
+    director.set_defaults(func=cmd_director_review)
 
     return p
 
