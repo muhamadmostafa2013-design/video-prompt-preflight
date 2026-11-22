@@ -1,0 +1,24 @@
+title: "Die Tiere und ihre Artikel"
+provider: "gemini-lyria"
+language: de
+cefr: "A1"
+age_range: [6, 9]
+bpm: 105
+duration_seconds: 60
+style: "Original cheerful acoustic children's pop; ukulele, glockenspiel, soft percussion"
+vocal_direction: "Clear natural Standard German diction, friendly voice, make der/die/das audible"
+min_repetitions: 2
+target_vocabulary:
+  - "der Hund"
+  - "die Katze"
+  - "das Pferd"
+lyrics: |
+  Wer ist das? Das ist der Hund!
+  Wer ist das? Das ist die Katze!
+  Wer ist das? Das ist das Pferd!
+  Deutsch lernen macht uns Spaß!
+
+  Wer ist das? Das ist der Hund!
+  Wer ist das? Das ist die Katze!
+  Wer ist das? Das ist das Pferd!
+  Deutsch lernen macht uns Spaß!

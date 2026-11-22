@@ -221,3 +221,20 @@ See [deep validation and residual risks](docs/TEST_EVIDENCE_v0.5.3.md). Passing 
 - Extended Node core/triple review tests and mobile Chromium E2E checks are required in CI.
 
 **Scope:** local-first engineering beta. Real-world accuracy of multilingual OCR/ASR and paid provider SDK/API behavior are not certified by these tests.
+
+
+## German Educational Music QA (educational songs)
+
+VPP now offers a separate **German Educational Music QA** mode for checking
+German teaching-song specifications *before* generating audio. It is a local
+deterministic text preflight and does **not** listen to the generated music.
+
+- Browser: open the Director's Room page and use **German Educational Music QA**
+  to check exact lyrics, articles from a limited curated dictionary, required
+  vocabulary, repetitions, tempo, and vocal-instruction consistency.
+- CLI: `vpp music-qa examples/german_animals_song.yml --json`
+- Prompt draft: `vpp compile-song examples/german_animals_song.yml -o song-prompt.txt`
+- Full setup, limitations, review checklist: [German Educational Music QA guide](docs/GERMAN_EDUCATIONAL_MUSIC_QA.md).
+
+A passing preflight **never** proves audio pronunciation, German grammar,
+educational appropriateness or music originality; inspect the finished song.

@@ -10,6 +10,7 @@ import yaml
 from .analyzer import analyze_scene
 from .compiler import compile_scene
 from .fixer import auto_fix_scene
+from .german_music_qa import compile_song_prompt, review_song
 from .io import dump_scene, load_scene
 from .jev_judge import jev_review
 from .media_qa import MediaQAError, inspect_video
@@ -267,6 +268,36 @@ def cmd_check_video(args: argparse.Namespace) -> int:
     return {"pass": 0, "review": 3, "fail": 2}[result["decision"]]
 
 
+
+
+def cmd_music_qa(args: argparse.Namespace) -> int:
+    spec = yaml.safe_load(_read_text(args.file))
+    report = review_song(spec)
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(f"{report['decision'].upper()} | German Educational Music QA | risk={report['risk_score']}/100")
+        for finding in report["findings"]:
+            print(f"[{finding['severity'].upper()}] {finding['rule_id']}: {finding['message']}")
+        print("OUTPUT QA: Human listening review is mandatory after generation.")
+    if args.prompt_out and report["passed"]:
+        Path(args.prompt_out).write_text(compile_song_prompt(spec), encoding="utf-8")
+        if not args.json:
+            print(f"Prompt draft written to {args.prompt_out}")
+    return 2 if not report["passed"] else (3 if report["decision"] == "review" else 0)
+
+
+def cmd_compile_song(args: argparse.Namespace) -> int:
+    spec = yaml.safe_load(_read_text(args.file))
+    report = review_song(spec)
+    prompt = compile_song_prompt(spec)
+    if args.output:
+        Path(args.output).write_text(prompt, encoding="utf-8")
+        print(f"Song prompt written to {args.output}")
+    else:
+        print(prompt, end="")
+    return 3 if report["decision"] == "review" else 0
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="vpp", description="Video Prompt Preflight")
     sub = p.add_subparsers(dest="command", required=True)
@@ -334,6 +365,18 @@ def build_parser() -> argparse.ArgumentParser:
     media.add_argument("--json", action="store_true")
     media.add_argument("-o", "--output", help="Save full structured QA evidence as JSON")
     media.set_defaults(func=cmd_check_video)
+
+
+    music = sub.add_parser("music-qa", help="German Educational Music QA (local text-only preflight)")
+    music.add_argument("file", help="Structured song YAML/JSON spec")
+    music.add_argument("--json", action="store_true")
+    music.add_argument("--prompt-out", help="Write draft generator prompt only if no blocking findings")
+    music.set_defaults(func=cmd_music_qa)
+
+    song = sub.add_parser("compile-song", help="Compile QA-approved German song spec without changing lyrics")
+    song.add_argument("file")
+    song.add_argument("-o", "--output")
+    song.set_defaults(func=cmd_compile_song)
 
     return p
 
