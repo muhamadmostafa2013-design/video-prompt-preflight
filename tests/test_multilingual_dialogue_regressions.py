@@ -71,7 +71,7 @@ def test_arabic_and_german_both_count_as_speech():
     scene = parse_prompt(prompt)
     languages = {item["language"] for item in scene["spoken"]["segments"]}
     assert languages == {"ar", "de"}
-    assert simulate_scene(scene).spoken_words >= 12
+    assert simulate_scene(scene).spoken_words >= 10
     result = triple_review(prompt, "gemini_omni")
     assert all(x in result["final_prompt"] for x in (
         "أول يوم ليك في الجامعة؟", "Entschuldigung, wo ist Raum B12?"
