@@ -1,0 +1,4 @@
+type: song
+title: "Die Tiere und ihre Artikel"
+aspect_ratio: "9:16"
+song_spec: "examples/german_animals_song.yml"
