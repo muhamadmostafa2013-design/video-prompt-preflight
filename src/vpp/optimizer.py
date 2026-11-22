@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .analyzer import analyze_scene
+from .candidates import build_candidates
 from .compiler import compile_scene
 from .fixer import auto_fix_scene
 from .prompt_analyzer import analyze_prompt
@@ -28,10 +29,14 @@ def optimize_prompt(text: str) -> dict:
     # The deterministic parser cannot safely reconstruct arbitrary visual
     # directions. Keep the original as an authoritative lossless block.
     # Conflicting originals remain REVIEW REQUIRED, never silently approved.
-    original = str(fixed.get("source_prompt") or "").strip()
-    if original:
-        optimized += ("\nORIGINAL SCENE DETAILS — preserve all character, setting, "
-                      "camera and exact spoken requirements:\n" + original + "\n")
+    source_candidate = next(
+        (candidate for candidate in build_candidates(fixed)
+         if candidate.name.startswith("SOURCE")), None
+    )
+    if source_candidate:
+        optimized += ("\nSOURCE SCENE DETAILS — preserve all character, setting, "
+                      "camera and exact spoken requirements:\n"
+                      + source_candidate.prompt + "\n")
     after = analyze_scene(fixed)
 
     conflict_ids = [f.rule_id for f in before.findings if f.rule_id in _AMBIGUOUS_CONFLICTS]
