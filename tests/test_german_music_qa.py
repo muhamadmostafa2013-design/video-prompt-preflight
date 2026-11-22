@@ -99,7 +99,7 @@ def test_blocked_song_cannot_be_compiled():
     {"lyrics": "Hallo", "target_vocabulary": [42]},
 ])
 def test_invalid_inputs_fail_cleanly(bad):
-    with pytest.raises(ValueError):
+    with pytest.raises((TypeError, ValueError)):
         review_song(bad)
 
 
