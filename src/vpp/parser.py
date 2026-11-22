@@ -243,8 +243,16 @@ def parse_prompt(text: str) -> dict:
         presenter_arabic_only = True
     same_presenter = bool(re.search(r"same(?:\s+\w+){0,2}\s+presenter", lower))
 
-    spoken_arabic = _extract_arabic_spoken(text)
     spoken_segments = _extract_spoken_segments(text)
+    # Screen-only Arabic must never be misclassified as narration.
+    arabic_lines = [item["text"] for item in spoken_segments
+                    if item["language"] == "ar"]
+    spoken_arabic = " ".join(arabic_lines)
+    if not spoken_arabic and re.search(
+        r"(?i)(?:spoken\s+(?:egyptian\s+)?arabic|arabic\s+dialogue|"
+        r"النص المنطوق|الكلام\s*:)", text
+    ):
+        spoken_arabic = _extract_arabic_spoken(text)
     screen_text = _extract_screen_text(text)
     timeline = _extract_timeline(text, duration)
 
