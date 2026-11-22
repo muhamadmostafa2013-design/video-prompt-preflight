@@ -101,6 +101,10 @@ window.VPP = window.VPP || {};
   const coverage=(scene,prompt)=>{
     const r=scene.rules||{},req=[];
     if(scene.text_whitelist?.length)req.push(...scene.text_whitelist);
+    if(scene.spoken?.arabic)req.push(scene.spoken.arabic);
+    for(const item of (scene.spoken?.segments||[])){
+      if(typeof item?.text==="string"&&item.text.trim())req.push(item.text);
+    }
     if(r.no_arabic_on_screen)req.push("Arabic");
     if(r.no_auto_subtitles)req.push("subtitles");
     if(r.no_background_music)req.push("music");
@@ -119,6 +123,7 @@ window.VPP = window.VPP || {};
       `${scene.aspect_ratio||"9:16"} video, exactly ${scene.duration_seconds||10}s.`,
       scene.style?.length?`Style: ${scene.style.join("; ")}.`:"",
       scene.spoken?.arabic?`Arabic dialogue: "${scene.spoken.arabic}"`:"",
+      ...(scene.spoken?.segments||[]).map(x=>`Exact spoken ${x.language} by ${x.speaker||"unspecified"}: "${x.text}"`),
       scene.screen_text?.length?`Exact screen text: ${scene.screen_text.join(" | ")}.`:"",
       safeEvents.length?`Timed beats: ${timedEvents({...scene,timeline:safeEvents}).join("; ")}.`:"",
       ...contract(scene)
@@ -135,10 +140,19 @@ window.VPP = window.VPP || {};
       }),
       scene.screen_text?.length?`Exact visible strings only: ${scene.screen_text.join(" | ")}`:"",
       scene.spoken?.arabic?`Arabic speech only: "${scene.spoken.arabic}"`:"",
+      ...(scene.spoken?.segments||[]).map(x=>`Exact spoken ${x.language} by ${x.speaker||"unspecified"}: "${x.text}"`),
       ...contract(scene)
     ].filter(Boolean).join("\n");
 
-    return [["A · strict compiler",strict],["B · minimal intent",minimal],["C · timeline first",timeline]]
+    const source=String(scene.source_prompt||"").trim();
+    const sourceSafe=source.split(/\r?\n/).map(line=>{
+      const m=line.match(/^(\s*\d+(?:\.\d+)?\s*[-–—]\s*\d+(?:\.\d+)?s\s+)(.*)$/);
+      return m&&scene.screen_text?.length?m[1]+A.safeTextAction(m[2],scene.screen_text):line;
+    }).join("\n");
+    const variants=[["A · strict compiler",strict],
+       source?["SOURCE · lossless original",sourceSafe]:["B · minimal intent",minimal],
+       ["C · timeline first",timeline]];
+    return variants
       .map(([name,prompt])=>{
         const tok=Math.max(1,Math.round(prompt.length/4));
         const neg=(prompt.match(/\b(?:no|not|never|without|avoid|don't|do not|must not)\b/gi)||[]).length;
@@ -149,7 +163,7 @@ window.VPP = window.VPP || {};
         if(scene.rules?.avoid_text_morph&&name.startsWith("A"))score+=10;
         return{name,prompt,tok,coverage:cov,score:Math.round(score*100)/100};
       })
-      .sort((a,b)=>b.score-a.score);
+      .sort((a,b)=>(b.name.startsWith("SOURCE")?1:0)-(a.name.startsWith("SOURCE")?1:0)||b.score-a.score);
   };
 
   A.tripleReview=(text,provider,localMemory=[])=>{
