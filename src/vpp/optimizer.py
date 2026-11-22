@@ -25,6 +25,13 @@ def optimize_prompt(text: str) -> dict:
     fixed = auto_fix_scene(scene)
     fixed["text_whitelist"] = list(fixed.get("screen_text", []) or [])
     optimized = compile_scene(fixed)
+    # The deterministic parser cannot safely reconstruct arbitrary visual
+    # directions. Keep the original as an authoritative lossless block.
+    # Conflicting originals remain REVIEW REQUIRED, never silently approved.
+    original = str(fixed.get("source_prompt") or "").strip()
+    if original:
+        optimized += ("\nORIGINAL SCENE DETAILS — preserve all character, setting, "
+                      "camera and exact spoken requirements:\n" + original + "\n")
     after = analyze_scene(fixed)
 
     conflict_ids = [f.rule_id for f in before.findings if f.rule_id in _AMBIGUOUS_CONFLICTS]
