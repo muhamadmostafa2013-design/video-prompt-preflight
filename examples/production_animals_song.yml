@@ -1,4 +1,8 @@
 type: song
 title: "Die Tiere und ihre Artikel"
 aspect_ratio: "9:16"
+learning_objective: "Learners can correctly associate common animal nouns with the German articles der die and das."
+cefr_level: A1
+learner_age: [6, 9]
+target_phrases: ["der Hund", "die Katze", "das Pferd"]
 song_spec: "examples/german_animals_song.yml"
