@@ -164,35 +164,35 @@ def _extract_spoken_segments(text: str) -> list[dict]:
         utterance = match.group(1).strip()
         if not utterance or utterance in seen:
             continue
-        preceding_line = text[text.rfind("\\n", 0, match.start()) + 1:match.start()]
+        preceding_line = text[text.rfind("\n", 0, match.start()) + 1:match.start()]
         context = text[max(0, match.start() - 260):match.start()]
-        last_lines = "\\n".join(context.splitlines()[-3:])
-        on_screen_only = bool(re.search(r"(?:on[- ]screen|screen text|display|visual text)\\s*:?\\s*$",
+        last_lines = "\n".join(context.splitlines()[-3:])
+        on_screen_only = bool(re.search(r"(?:on[- ]screen|screen text|display|visual text)\s*:?\s*$",
                                         preceding_line, re.IGNORECASE))
         if on_screen_only:
             continue
         speech_cue = re.search(
-            r"\\b(?:says?|asks?|speaks?|dialogue|spoken|narrator|voice|speech|"
-            r"exact words|pronounces?|replies?|audio dialogue)\\b",
+            r"\b(?:says?|asks?|speaks?|dialogue|spoken|narrator|voice|speech|"
+            r"exact words|pronounces?|replies?|audio dialogue)\b",
             last_lines, re.IGNORECASE,
         )
         if not speech_cue:
             continue
         if contains_arabic(utterance):
             language = "ar"
-        elif re.search(r"\\b(?:german|deutsch)\\b", last_lines, re.IGNORECASE) or re.search(
-            r"\\b(?:ich|entschuldigung|können|möchte|bitte|kaffee|hallo|guten|wo)\\b",
+        elif re.search(r"\b(?:german|deutsch)\b", last_lines, re.IGNORECASE) or re.search(
+            r"\b(?:ich|entschuldigung|können|möchte|bitte|kaffee|hallo|guten|wo)\b",
             utterance, re.IGNORECASE,
         ):
             language = "de"
-        elif re.search(r"\\benglish\\b", last_lines, re.IGNORECASE):
+        elif re.search(r"\benglish\b", last_lines, re.IGNORECASE):
             language = "en"
         else:
             language = "und"
         # Speaker attribution is best-effort; the original text is always preserved.
         speakers = re.findall(
-            r"\\b(narrator|student|customer|presenter|barista|teacher|"
-            r"receptionist|assistant|man|woman)\\b", last_lines, re.IGNORECASE
+            r"\b(narrator|student|customer|presenter|barista|teacher|"
+            r"receptionist|assistant|man|woman)\b", last_lines, re.IGNORECASE
         )
         speaker = speakers[-1].lower() if speakers else "unspecified"
         segments.append({"language": language, "text": utterance, "speaker": speaker})
