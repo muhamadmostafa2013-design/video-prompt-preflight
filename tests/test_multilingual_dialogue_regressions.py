@@ -7,7 +7,6 @@ from vpp.parser import parse_prompt
 from vpp.simulator import simulate_scene
 from vpp.triple_review import triple_review
 
-
 GERMAN_LONG = (
     "Entschuldigung, ich bin heute zum ersten Mal an dieser Universität "
     "und ich weiß leider überhaupt nicht, wo der große Hörsaal im zweiten "
