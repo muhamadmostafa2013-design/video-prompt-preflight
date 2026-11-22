@@ -167,6 +167,40 @@ def analyze_scene(scene: dict) -> Report:
         if wc > capacity:
             _add(report, "speech.too_dense", "warning", f"Arabic dialogue has {wc} words; target capacity is about {int(capacity)} words.", "Shorten dialogue or increase scene duration.", 12)
 
+    # Multilingual spoken lines must fit the clip and retain identifiable language.
+    segments = spoken.get("segments", []) or []
+    if not isinstance(segments, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("text"), str)
+        or not isinstance(item.get("language"), str)
+        for item in segments
+    ):
+        _add(report, "speech.segments.invalid", "error",
+             "Spoken segments require text and language strings.",
+             "Provide a list of {language, text, speaker} objects.", 35)
+        segments = []
+    if duration and segments:
+        rates = {"ar": 2.7, "de": 2.4, "en": 2.6, "und": 2.4}
+        seen = set()
+        estimated = 0.0
+        for item in segments:
+            utterance = item["text"].strip()
+            if not utterance or utterance in seen:
+                continue
+            seen.add(utterance)
+            language = item["language"].lower()
+            if language not in rates or language == "und":
+                _add(report, "speech.language.review", "warning",
+                     "Spoken dialogue language could not be verified.",
+                     "Specify the spoken language and intended speaker.", 10)
+            estimated += word_count(utterance) / rates.get(language, 2.4)
+        if arabic.strip() and arabic.strip() not in seen:
+            estimated += word_count(arabic) / 2.7
+        if estimated > float(duration) + .1:
+            _add(report, "speech.multilingual.overflow", "error",
+                 f"Estimated multilingual speech takes {estimated:.1f}s, "
+                 f"longer than the {duration:g}s clip.",
+                 "Shorten exact dialogue or split the scene; never discard speech.", 40)
+
     if rules.get("presenter_arabic_only", False):
         german_audio = spoken.get("german_by_presenter", []) or []
         if german_audio:
