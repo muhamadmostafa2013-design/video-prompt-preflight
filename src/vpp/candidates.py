@@ -179,9 +179,14 @@ def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
         neg = _negative_count(prompt)
         tok = _token_estimate(prompt)
         coverage = _coverage(scene, prompt)
-        if source and not name.startswith("SOURCE"):
-            # Free-form camera, identity and wardrobe details are not parsed
-            # exhaustively. A compressed source cannot claim full fidelity.
+        visual_detail_risk = bool(re.search(
+            r"\b(?:student|customer|presenter|character|wardrobe|shirt|sweater|"
+            r"backpack|cafe|coffee|university|classroom|barista|camera|"
+            r"reference|lighting|counter|face|beard|hair|building|room)\b",
+            source, re.IGNORECASE,
+        ))
+        if source and visual_detail_risk and not name.startswith("SOURCE"):
+            # Natural-language visual identities are not exhaustively parsed.
             coverage = min(coverage, 99)
         score = 100.0 - min(25, tok / 30) - min(20, neg * (3 if provider == "runway" else 1))
         score -= (100 - coverage) * 0.8
