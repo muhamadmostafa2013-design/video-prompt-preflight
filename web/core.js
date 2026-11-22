@@ -47,7 +47,26 @@ window.VPP = window.VPP || {};
     const aspect = (aspectMatch?.[1] || "9:16").replace(/\s/g, "");
     const low = text.toLowerCase();
     const quoted = [...text.matchAll(/["“”](.*?)["“”]/gs)].map(m=>m[1]).filter(A.hasArabic);
-    const arabic = quoted.sort((a,b)=>b.length-a.length)[0] || "";
+    const arabicCandidate = quoted.sort((a,b)=>b.length-a.length)[0] || "";
+
+    const segments=[], seenSpeech=new Set();
+    for(const q of text.matchAll(/["“”](.*?)["“”]/gs)){
+      const spoken=q[1].trim(),index=q.index||0;
+      if(!spoken||seenSpeech.has(spoken))continue;
+      const prefix=text.slice(text.lastIndexOf("\n",index)+1,index);
+      const nearby=text.slice(Math.max(0,index-260),index).split(/\r?\n/).slice(-3).join("\n");
+      if(/(?:on[- ]screen|screen text|display|visual text)\s*:?\s*$/i.test(prefix))continue;
+      if(!/\b(?:says?|asks?|speaks?|dialogue|spoken|narrator|voice|speech|exact words|pronounces?|replies?|audio dialogue)\b/i.test(nearby))continue;
+      const lang=A.hasArabic(spoken)?"ar":
+        /\b(?:german|deutsch)\b/i.test(nearby)||/\b(?:ich|entschuldigung|können|möchte|bitte|kaffee|hallo|guten|wo)\b/i.test(spoken)?"de":
+        /\benglish\b/i.test(nearby)?"en":"und";
+      const speakers=[...nearby.matchAll(/\b(narrator|student|customer|presenter|barista|teacher|receptionist|assistant|man|woman)\b/gi)];
+      segments.push({language:lang,text:spoken,speaker:speakers.length?speakers.at(-1)[1].toLowerCase():"unspecified"});
+      seenSpeech.add(spoken);
+    }
+
+    const arabicSpoken=segments.filter(x=>x.language==="ar").map(x=>x.text).join(" ");
+    const arabic=arabicSpoken||(/(?:spoken\s+(?:egyptian\s+)?arabic|arabic\s+dialogue|النص المنطوق|الكلام\s*:)/i.test(text)?arabicCandidate:"");
     const lines = text.split(/\r?\n/), screen = []; let capture = false;
 
     for (const raw of lines) {
@@ -99,7 +118,7 @@ window.VPP = window.VPP || {};
       aspect_ratio:aspect,
       duration_seconds:duration,
       style,
-      spoken:{arabic,german_by_presenter:[]},
+      spoken:{arabic,german_by_presenter:[],segments},
       screen_text:[...new Set(screen)],
       text_whitelist:[...new Set(screen)],
       timeline,
@@ -115,6 +134,7 @@ window.VPP = window.VPP || {};
         max_spoken_words_per_second:2.7
       },
       forbidden:[],
+      source_prompt:text,
       parse_meta:{duration_mentions:durations,duration_explicit:durations.length>0,
         aspect_explicit:!!aspectMatch,parser:"deterministic-web-v0.5.3"}
     };
@@ -127,8 +147,19 @@ window.VPP = window.VPP || {};
       if(Number.isFinite(Number(e.start)))total=Math.max(total,Number(e.end??(Number(e.start)+Number(e.seconds||0))));
       else total+=Number(e.seconds||0);
     }
-    const words=A.wordCount(scene.spoken?.arabic||"");
-    const speech=words/2.7, util=speech/d, rate=(scene.timeline||[]).length/d*10;
+    const segments=Array.isArray(scene.spoken?.segments)?scene.spoken.segments:[];
+    const seen=new Set();let words=0,speech=0;
+    const rates={ar:2.7,de:2.4,en:2.6,und:2.4};
+    for(const item of segments){
+      const line=typeof item?.text==="string"?item.text.trim():"";
+      if(!line||seen.has(line))continue;
+      seen.add(line);
+      const count=A.wordCount(line);
+      words+=count;speech+=count/(rates[item.language]||2.4);
+    }
+    const arabic=scene.spoken?.arabic||"";
+    if(arabic&&!seen.has(arabic)){const count=A.wordCount(arabic);words+=count;speech+=count/2.7}
+    const util=speech/d, rate=(scene.timeline||[]).length/d*10;
     let status="comfortable";
     if(total>d+.05||util>1)status="overflow";
     else if(util>.86||rate>6)status="tight";
@@ -164,6 +195,21 @@ window.VPP = window.VPP || {};
 
     const wc=A.wordCount(scene.spoken?.arabic||""),cap=d*2.7;
     if(wc>cap) A.add(out,"speech.too_dense","warning",`Arabic dialogue has ${wc} words; capacity is about ${Math.floor(cap)}.`,`Shorten dialogue.`,12);
+    const segments=scene.spoken?.segments||[];
+    if(!Array.isArray(segments)||segments.some(x=>!x||typeof x.text!=="string"||typeof x.language!=="string")){
+      A.add(out,"speech.segments.invalid","error","Malformed multilingual speech segments.","Provide speaker, language and exact text.",35);
+    }else{
+      for(const x of segments){
+        if(!["ar","de","en"].includes(x.language))
+          A.add(out,"speech.language.review","warning","Spoken dialogue language needs manual verification.","Specify speech language explicitly.",10);
+      }
+      const sim=A.simulate(scene);
+      if(sim.speech>d+.1)
+        A.add(out,"speech.multilingual.overflow","error",
+          "Spoken dialogue needs about "+sim.speech.toFixed(1)+"s but the clip is "+d+"s.",
+          "Shorten dialogue or split the clip; do not drop a line.",40);
+    }
+
 
     const durations=[...new Set(scene.parse_meta?.duration_mentions||[])];
     if(durations.length>1) A.add(out,"prompt.duration.conflict","error",`Conflicting durations: ${durations.join(", ")}s.`,`Use one exact duration.`,35);

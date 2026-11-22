@@ -47,6 +47,16 @@ def compile_scene(scene: dict) -> str:
     arabic = spoken.get("arabic")
     if arabic:
         lines.append(f'ARABIC AUDIO ONLY: "{arabic}"')
+    for segment in spoken.get("segments", []) or []:
+        if not isinstance(segment, dict):
+            continue
+        dialogue = str(segment.get("text", "")).strip()
+        if not dialogue:
+            continue
+        language = str(segment.get("language", "und"))
+        speaker = str(segment.get("speaker", "unspecified"))
+        # Never lose the literal German/Arabic line while compiling a Scene Spec.
+        lines.append(f'SPOKEN {language} BY {speaker}: "{dialogue}"')
     if rules.get("presenter_arabic_only"):
         lines.append("PRESENTER AUDIO: Egyptian Arabic only; do not pronounce German.")
 

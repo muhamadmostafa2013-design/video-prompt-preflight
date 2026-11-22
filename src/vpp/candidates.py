@@ -27,6 +27,20 @@ def _negative_count(text: str) -> int:
     return len(re.findall(r"\b(?:no|not|never|without|avoid|don't|do not|must not)\b", text, re.IGNORECASE))
 
 
+def _spoken_lines(scene: dict) -> list[str]:
+    spoken = scene.get("spoken") or {}
+    segments = spoken.get("segments", []) or []
+    lines = []
+    for item in segments:
+        if not isinstance(item, dict) or not str(item.get("text", "")).strip():
+            continue
+        lines.append(
+            f'EXACT SPOKEN {item.get("language", "und")} BY '
+            f'{item.get("speaker", "unspecified")}: "{item["text"]}"'
+        )
+    return lines
+
+
 def _contract(scene: dict) -> list[str]:
     rules = scene.get("rules", {}) or {}
     lines = ["OUTPUT CONTRACT:"]
@@ -77,6 +91,7 @@ def _minimal(scene: dict) -> str:
     spoken = (scene.get("spoken") or {}).get("arabic")
     if spoken:
         parts.append(f'Arabic dialogue: "{spoken}"')
+    parts.extend(_spoken_lines(scene))
     if scene.get("screen_text"):
         parts.append("Exact screen text: " + " | ".join(map(str, scene["screen_text"])) + ".")
     events = _timed_events(scene)
@@ -91,6 +106,7 @@ def _timeline_first(scene: dict) -> str:
     if scene.get("style"):
         lines.append("Style: " + "; ".join(map(str, scene["style"])) + ".")
     lines.extend(_timed_events(scene))
+    lines.extend(_spoken_lines(scene))
     if scene.get("screen_text"):
         lines.append("Exact visible strings only: " + " | ".join(map(str, scene["screen_text"])))
     spoken = (scene.get("spoken") or {}).get("arabic")
@@ -105,6 +121,13 @@ def _coverage(scene: dict, prompt: str) -> int:
     rules = scene.get("rules", {}) or {}
     if scene.get("text_whitelist"):
         required.extend(map(str, scene.get("text_whitelist", [])))
+    spoken = scene.get("spoken") or {}
+    if spoken.get("arabic"):
+        required.append(str(spoken["arabic"]))
+    required.extend(
+        str(item["text"]) for item in spoken.get("segments", []) or []
+        if isinstance(item, dict) and str(item.get("text", "")).strip()
+    )
     if rules.get("no_arabic_on_screen"):
         required.append("Arabic")
     if rules.get("no_auto_subtitles"):
@@ -122,17 +145,49 @@ def _coverage(scene: dict, prompt: str) -> int:
     return round(found / len(required) * 100)
 
 
+def _safe_source(scene: dict, source: str) -> str:
+    """Preserve free-form instructions, only rewriting confirmed text morph beats."""
+    exact = scene.get("screen_text") or []
+    if not exact:
+        return source
+    out = []
+    for line in source.splitlines():
+        match = re.match(r"^(\s*\d+(?:\.\d+)?\s*[-–—]\s*"
+                         r"\d+(?:\.\d+)?s\s+)(.*)$", line)
+        if match:
+            out.append(match.group(1) + _safe_text_action(match.group(2), exact))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
     prompts = [
         ("A · strict compiler", compile_scene(scene)),
         ("B · minimal intent", _minimal(scene)),
         ("C · timeline first", _timeline_first(scene)),
     ]
+    # Lossy extraction of free-form visual details is unavoidable. The source
+    # is the sole safe automatic winner until semantic fidelity is verified.
+    source = str(scene.get("source_prompt", "") or "").strip()
+    if source:
+        # Keep exactly three candidate slots for API and browser parity.
+        # A compact version is advisory; free-form visual details must survive.
+        prompts[1] = ("SOURCE · lossless original", _safe_source(scene, source))
     out: list[Candidate] = []
     for name, prompt in prompts:
         neg = _negative_count(prompt)
         tok = _token_estimate(prompt)
         coverage = _coverage(scene, prompt)
+        visual_detail_risk = bool(re.search(
+            r"\b(?:student|customer|presenter|character|wardrobe|shirt|sweater|"
+            r"backpack|cafe|coffee|university|classroom|barista|camera|"
+            r"reference|lighting|counter|face|beard|hair|building|room)\b",
+            source, re.IGNORECASE,
+        ))
+        if source and visual_detail_risk and not name.startswith("SOURCE"):
+            # Natural-language visual identities are not exhaustively parsed.
+            coverage = min(coverage, 99)
         score = 100.0 - min(25, tok / 30) - min(20, neg * (3 if provider == "runway" else 1))
         score -= (100 - coverage) * 0.8
         if name.startswith("C") and scene.get("timeline"):
@@ -145,4 +200,4 @@ def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
         ):
             score += 10
         out.append(Candidate(name, prompt, tok, neg, coverage, round(score, 2)))
-    return sorted(out, key=lambda c: c.score, reverse=True)
+    return sorted(out, key=lambda c: (c.name.startswith("SOURCE"), c.score), reverse=True)

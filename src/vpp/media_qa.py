@@ -211,8 +211,10 @@ def inspect_video(
     words = [str(s) for s in (scene.get("screen_text") or []) if str(s).strip()]
     spoken = scene.get("spoken") or {}
     required_speech = " ".join(
-        [spoken.get("arabic", "")] +
-        [str(s) for s in (spoken.get("german_by_presenter") or [])]
+        [str(spoken.get("arabic", ""))] +
+        [str(s) for s in (spoken.get("german_by_presenter") or [])] +
+        [str(segment.get("text", "")) for segment in
+         (spoken.get("segments") or []) if isinstance(segment, dict)]
     ).strip()
 
     frame_evidence: list[dict] = []
