@@ -1,6 +1,5 @@
 """Production security and offline regression tests; no Gemini API calls."""
 import json
-import os
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
@@ -125,7 +124,6 @@ def test_paid_model_stub_uses_expected_schema(tmp_path, monkeypatch):
             return SimpleNamespace(output_audio=SimpleNamespace(data=encoded),
                                    output_text="Unverified transcription")
     monkeypatch.setattr(p, "generate_paid", p.generate_paid)
-    monkeypatch.setattr(p, "_client", lambda key: SimpleNamespace(interactions=Interactions()))
     # If the code path still imports google-genai internally, inject an isolated stub.
     import sys
     fake_genai = SimpleNamespace(Client=lambda api_key: SimpleNamespace(interactions=Interactions()))
