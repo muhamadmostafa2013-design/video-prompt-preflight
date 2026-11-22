@@ -47,7 +47,7 @@ window.VPP = window.VPP || {};
     const aspect = (aspectMatch?.[1] || "9:16").replace(/\s/g, "");
     const low = text.toLowerCase();
     const quoted = [...text.matchAll(/["“”](.*?)["“”]/gs)].map(m=>m[1]).filter(A.hasArabic);
-    const arabic = quoted.sort((a,b)=>b.length-a.length)[0] || "";
+    const arabicCandidate = quoted.sort((a,b)=>b.length-a.length)[0] || "";
 
     const segments=[], seenSpeech=new Set();
     for(const q of text.matchAll(/["“”](.*?)["“”]/gs)){
@@ -65,6 +65,8 @@ window.VPP = window.VPP || {};
       seenSpeech.add(spoken);
     }
 
+    const arabicSpoken=segments.filter(x=>x.language==="ar").map(x=>x.text).join(" ");
+    const arabic=arabicSpoken||(/(?:spoken\s+(?:egyptian\s+)?arabic|arabic\s+dialogue|النص المنطوق|الكلام\s*:)/i.test(text)?arabicCandidate:"");
     const lines = text.split(/\r?\n/), screen = []; let capture = false;
 
     for (const raw of lines) {
