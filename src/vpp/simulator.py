@@ -34,10 +34,33 @@ def simulate_scene(scene: dict) -> Simulation:
             total = max(total, float(event.get("end", start + float(event.get("seconds", 0)))))
         else:
             total += float(event.get("seconds", 0) or 0)
-    arabic = str((scene.get("spoken") or {}).get("arabic", ""))
-    wc = word_count(arabic)
-    # Conservative natural short-form Egyptian Arabic pacing baseline.
-    speech_seconds = wc / 2.7 if wc else 0.0
+    spoken = scene.get("spoken") or {}
+    if not isinstance(spoken, dict):
+        spoken = {}
+    segments = spoken.get("segments") or []
+    if not isinstance(segments, list):
+        segments = []
+    valid_segments = [item for item in segments if isinstance(item, dict)
+                      and isinstance(item.get("text"), str) and item["text"].strip()]
+    # Exact dialogue is tracked per language, not just the Arabic narrator.
+    # Rates are screening heuristics, not a guarantee of natural TTS speed.
+    speeds = {"ar": 2.7, "de": 2.4, "en": 2.6, "und": 2.4}
+    wc = 0
+    speech_seconds = 0.0
+    seen: set[str] = set()
+    for item in valid_segments:
+        line = item["text"].strip()
+        if line in seen:
+            continue
+        seen.add(line)
+        count = word_count(line)
+        wc += count
+        speech_seconds += count / speeds.get(str(item.get("language")), 2.4)
+    arabic = str(spoken.get("arabic", "") or "")
+    if arabic and arabic not in seen:
+        count = word_count(arabic)
+        wc += count
+        speech_seconds += count / 2.7
     utilization = speech_seconds / duration if duration else 1.0
     event_count = len(timeline)
     event_rate = event_count / duration * 10 if duration else float("inf")
