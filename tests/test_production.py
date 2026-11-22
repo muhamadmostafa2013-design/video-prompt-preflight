@@ -147,3 +147,11 @@ def test_offline_demo_renders_real_mp4(tmp_path, monkeypatch):
     result = p.produce(spec, root, root / "out", mode="demo")
     assert result["output"] == "final.mp4"
     assert (root / "out/final.mp4").stat().st_size > 10_000
+
+
+def test_unmocked_vpp_review_for_real_university_example():
+    job = p.validate_job(p._yaml(ROOT / "examples/production_university_video.yml"), ROOT)
+    result = p.preflight(job)
+    assert len(result["prompts"]) == 2
+    assert len(result["qa"]) == 2
+    assert all(x["passed"] for x in result["qa"])
