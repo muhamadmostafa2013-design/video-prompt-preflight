@@ -232,8 +232,8 @@ deterministic text preflight and does **not** listen to the generated music.
 - Browser: open the Director's Room page and use **German Educational Music QA**
   to check exact lyrics, articles from a limited curated dictionary, required
   vocabulary, repetitions, tempo, and vocal-instruction consistency.
-- CLI: \`vpp music-qa examples/german_animals_song.yml --json\`
-- Prompt draft: \`vpp compile-song examples/german_animals_song.yml -o song-prompt.txt\`
+- CLI: `vpp music-qa examples/german_animals_song.yml --json`
+- Prompt draft: `vpp compile-song examples/german_animals_song.yml -o song-prompt.txt`
 - Full setup, limitations, review checklist: [German Educational Music QA guide](docs/GERMAN_EDUCATIONAL_MUSIC_QA.md).
 
 A passing preflight **never** proves audio pronunciation, German grammar,
