@@ -14,8 +14,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def valid_video():
     return {"type": "video", "title": "Campus",
             "aspect_ratio": "9:16",
+            "learning_objective": "Students can greet each other politely in German.",
+            "cefr_level": "A1", "learner_age": [16, 25],
+            "target_phrases": ["Guten Morgen!"],
             "scenes": [{"duration_seconds": 8,
-                        "prompt": "Two German students speak naturally outside a university."}]}
+                        "prompt": 'Student A says "Guten Morgen!" clearly to another student on campus.',
+                        "expected_dialogue": [{"speaker": "Student A", "text": "Guten Morgen!"}]}]}
 
 
 def test_load_real_video_job():
