@@ -288,3 +288,45 @@ def test_structured_multilingual_speech_compiles_without_loss():
         ]},
     }
     assert 'Entschuldigung, wo ist Raum B12?' in compile_scene(scene)
+
+
+def test_arabic_screen_only_is_not_counted_as_speech():
+    prompt = (
+        'Create an 8-second 9:16 video. ON SCREEN: "أنا جديد" '
+        "No music. No subtitles."
+    )
+    scene = parse_prompt(prompt)
+    assert scene["spoken"]["arabic"] == ""
+    assert scene["spoken"]["segments"] == []
+    assert simulate_scene(scene).spoken_words == 0
+
+
+def test_condensed_candidate_cannot_claim_lossless_character_identity():
+    prompt = (
+        "Create an 8-second 9:16 video. Egyptian student wears a green sweater "
+        "and a black backpack inside Berlin University. "
+        'German student says: "Ich bin neu hier." No music. No subtitles.'
+    )
+    candidates = build_candidates(parse_prompt(prompt), "gemini_omni")
+    source = [c for c in candidates if c.name.startswith("SOURCE")][0]
+    others = [c for c in candidates if not c.name.startswith("SOURCE")]
+    assert source.hard_constraint_coverage == 100
+    assert all(c.hard_constraint_coverage < 100 for c in others)
+
+
+def test_german_only_output_without_audio_is_rejected(monkeypatch):
+    from vpp import media_qa
+
+    monkeypatch.setattr(media_qa, "probe_video", lambda _: {
+        "duration_seconds": 8.0, "width": 1080, "height": 1920,
+        "aspect_ratio": 9 / 16, "has_audio": False,
+    })
+    result = media_qa.inspect_video(
+        "mock.mp4", {"spoken": {"segments": [
+            {"language": "de", "speaker": "student", "text": "Ich bin neu hier."}
+        ]}},
+    )
+    assert result["decision"] == "fail"
+    assert "expected_speech_audio" in {
+        item["name"] for item in result["checks"]
+    }
