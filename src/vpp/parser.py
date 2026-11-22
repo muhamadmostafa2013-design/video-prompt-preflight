@@ -151,6 +151,55 @@ def _extract_timeline(text: str, duration: float) -> list[dict]:
     return events
 
 
+
+def _extract_spoken_segments(text: str) -> list[dict]:
+    """Extract only confidently marked spoken lines; unknown lines remain in source_prompt.
+
+    Exact speech must be first-class data rather than an unparsed fragment that
+    candidate compaction can silently erase. Deliberately conservative.
+    """
+    segments: list[dict] = []
+    seen: set[str] = set()
+    for match in _QUOTED_RE.finditer(text):
+        utterance = match.group(1).strip()
+        if not utterance or utterance in seen:
+            continue
+        preceding_line = text[text.rfind("\\n", 0, match.start()) + 1:match.start()]
+        context = text[max(0, match.start() - 260):match.start()]
+        last_lines = "\\n".join(context.splitlines()[-3:])
+        on_screen_only = bool(re.search(r"(?:on[- ]screen|screen text|display|visual text)\\s*:?\\s*$",
+                                        preceding_line, re.IGNORECASE))
+        if on_screen_only:
+            continue
+        speech_cue = re.search(
+            r"\\b(?:says?|asks?|speaks?|dialogue|spoken|narrator|voice|speech|"
+            r"exact words|pronounces?|replies?|audio dialogue)\\b",
+            last_lines, re.IGNORECASE,
+        )
+        if not speech_cue:
+            continue
+        if contains_arabic(utterance):
+            language = "ar"
+        elif re.search(r"\\b(?:german|deutsch)\\b", last_lines, re.IGNORECASE) or re.search(
+            r"\\b(?:ich|entschuldigung|können|möchte|bitte|kaffee|hallo|guten|wo)\\b",
+            utterance, re.IGNORECASE,
+        ):
+            language = "de"
+        elif re.search(r"\\benglish\\b", last_lines, re.IGNORECASE):
+            language = "en"
+        else:
+            language = "und"
+        # Speaker attribution is best-effort; the original text is always preserved.
+        speakers = re.findall(
+            r"\\b(narrator|student|customer|presenter|barista|teacher|"
+            r"receptionist|assistant|man|woman)\\b", last_lines, re.IGNORECASE
+        )
+        speaker = speakers[-1].lower() if speakers else "unspecified"
+        segments.append({"language": language, "text": utterance, "speaker": speaker})
+        seen.add(utterance)
+    return segments
+
+
 def parse_prompt(text: str) -> dict:
     """Heuristically convert a free-form video prompt into a conservative Scene Spec."""
     # Global scene durations must not be confused with individual hold/action times.
@@ -195,6 +244,7 @@ def parse_prompt(text: str) -> dict:
     same_presenter = bool(re.search(r"same(?:\s+\w+){0,2}\s+presenter", lower))
 
     spoken_arabic = _extract_arabic_spoken(text)
+    spoken_segments = _extract_spoken_segments(text)
     screen_text = _extract_screen_text(text)
     timeline = _extract_timeline(text, duration)
 
@@ -211,7 +261,8 @@ def parse_prompt(text: str) -> dict:
         "aspect_ratio": aspect,
         "duration_seconds": duration,
         "style": style,
-        "spoken": {"arabic": spoken_arabic, "german_by_presenter": []},
+        "spoken": {"arabic": spoken_arabic, "german_by_presenter": [],
+                   "segments": spoken_segments},
         "screen_text": screen_text,
         "text_whitelist": list(screen_text),
         "timeline": timeline,
