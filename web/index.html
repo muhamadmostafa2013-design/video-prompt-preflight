@@ -89,6 +89,44 @@
     </div>
   </section>
 
+
+  <section class="card" id="musicQaPanel" aria-labelledby="musicQaTitle">
+    <div class="section-title"><span class="icon">🎵</span><h2 id="musicQaTitle">German Educational Music QA</h2></div>
+    <p class="micro">Check original German learning-song lyrics before generation. Offline text checks only: pronunciation, audio quality, grammatical completeness and music rights still need human review.</p>
+    <label for="musicLyrics">Exact German lyrics</label>
+    <textarea id="musicLyrics" spellcheck="false" lang="de" dir="auto" style="min-height:190px"></textarea>
+    <label for="musicTargets">Required learning phrases (one per line)</label>
+    <textarea id="musicTargets" spellcheck="false" lang="de" style="min-height:95px"></textarea>
+    <div class="advanced-grid" style="margin:12px 0">
+      <div class="mini">
+        <label for="musicLevel">CEFR level</label>
+        <select id="musicLevel"><option value="pre-A1">pre-A1</option><option value="A1" selected>A1</option><option value="A2">A2</option><option value="B1">B1</option></select>
+        <label for="musicBpm">Tempo (BPM)</label>
+        <input id="musicBpm" type="number" min="1" max="300" value="105" />
+        <label for="musicRepeats">Minimum repetitions per phrase</label>
+        <input id="musicRepeats" type="number" min="1" max="20" value="2" />
+      </div>
+      <div class="mini">
+        <label for="musicVoice">Voice and pronunciation instructions</label>
+        <input id="musicVoice" type="text" value="Clear Standard German diction; emphasize der/die/das naturally." />
+        <label for="musicStyle">Original musical style</label>
+        <input id="musicStyle" type="text" value="Cheerful original acoustic pop, ukulele and glockenspiel" />
+        <p><label><input id="musicBilingual" type="checkbox" /> Allow Arabic lyrics intentionally</label></p>
+        <p><label><input id="musicInstrumental" type="checkbox" /> Instrumental-only (incompatible with lyrics)</label></p>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" id="musicCheck">Check Song</button>
+      <button type="button" class="secondary" id="musicExample">Load animal-song example</button>
+      <button type="button" class="secondary" id="musicCopy">Copy generator prompt</button>
+    </div>
+    <p id="musicQaStatus" role="status" aria-live="polite"></p>
+    <div id="musicQaFindings" class="mini" aria-label="Music preflight findings"></div>
+    <h3>Generator prompt</h3>
+    <pre id="musicQaPrompt" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:430px;overflow:auto"></pre>
+    <p class="micro">Limited curated article dictionary only. The full German text and rendered recording require teacher review.</p>
+  </section>
+
   <details class="advanced">
     <summary>🎛️ Behind the camera — optional nerdy stuff</summary>
     <div class="advanced-body">
@@ -107,6 +145,6 @@
   <div class="route"><b>The whole movie:</b> Prompt → Constitution Check → Safer Prompt → Generate → Output QA → Learn from bloopers</div>
   <footer>Evidence tiers: A = official · B = cross-platform/reproduced · C = community empirical · D = hypothesis. VPP still cannot promise a stochastic model won't discover experimental cinema. 🎭</footer>
 </main>
-<script src="core.js"></script><script src="triple.js"></script><script src="constitution.js"></script><script src="output-qa.js"></script><script src="ui.js"></script>
+<script src="core.js"></script><script src="triple.js"></script><script src="constitution.js"></script><script src="output-qa.js"></script><script src="ui.js"></script><script src="music-qa.js"></script>
 </body>
 </html>
