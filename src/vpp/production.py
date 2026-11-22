@@ -143,16 +143,22 @@ def generate_paid(job: dict[str, Any], prompts: list[str], out: Path, key: str) 
     paths = []
     for index, prompt in enumerate(prompts):
         if job["type"] == "video":
-            response = client.interactions.create(
-                model=VIDEO_MODEL, input=prompt,
-                response_format={"type": "video",
-                                 "duration": str(job["scenes"][index]["duration_seconds"]) + "s",
-                                 "aspect_ratio": job["aspect_ratio"], "resolution": "720p"})
+            try:
+                response = client.interactions.create(
+                    model=VIDEO_MODEL, input=prompt,
+                    response_format={"type": "video",
+                                     "duration": str(job["scenes"][index]["duration_seconds"]) + "s",
+                                     "aspect_ratio": job["aspect_ratio"], "resolution": "720p"})
+            except Exception:
+                raise ProductionError("Gemini video request failed. Check plan, model access and usage logs privately.") from None
             video = getattr(response, "output_video", None)
             blob = _decode(getattr(video, "data", None))
             path = out / f"clip_{index+1:02d}.mp4"
         else:
-            response = client.interactions.create(model=MUSIC_MODEL, input=prompt)
+            try:
+                response = client.interactions.create(model=MUSIC_MODEL, input=prompt)
+            except Exception:
+                raise ProductionError("Gemini music request failed. Check plan, model access and usage logs privately.") from None
             audio = getattr(response, "output_audio", None)
             blob = _decode(getattr(audio, "data", None))
             path = out / "song.mp3"
