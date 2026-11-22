@@ -238,3 +238,20 @@ deterministic text preflight and does **not** listen to the generated music.
 
 A passing preflight **never** proves audio pronunciation, German grammar,
 educational appropriateness or music originality; inspect the finished song.
+
+
+## Gemini Production Engine (manual activation, free local QA)
+
+For educational German videos and learning songs, VPP now supports a
+**spend-gated pipeline**: Triple Verify / German Educational Music QA,
+Gemini Omni 1.2 Flash or Lyria 3.5, and FFmpeg MP4 assembly.
+
+The default is **dry-run** and makes no API calls. For a realistic FFmpeg
+montage test with fake input clips, run:
+
+```bash
+python -m vpp.production --spec examples/production_university_video.yml --mode demo
+```
+
+For exact options, key safety instructions, paid approval and limits see
+[Gemini Production Engine guide](docs/GEMINI_PRODUCTION_ENGINE.md).
