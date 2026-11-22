@@ -7,14 +7,14 @@ pronunciation, grammar, melody originality, CEFR compliance or commercial rights
 
 ## Start with the sample
 
-\`\`\`bash
+```bash
 pip install -e '.[dev]'
 vpp music-qa examples/german_animals_song.yml
 vpp music-qa examples/german_animals_song.yml --json
 vpp music-qa examples/german_animals_song.yml --prompt-out /tmp/animals-prompt.txt
 vpp compile-song examples/german_animals_song.yml -o /tmp/animals-prompt.txt
 pytest -q tests/test_german_music_qa.py
-\`\`\`
+```
 
 Exit codes: **0** = no detected blocking/advisory preflight issues;
 **2** = blocked/invalid; **3** = advisory items need teacher review.
@@ -22,21 +22,21 @@ Exit code 0 means *text preflight passed*, **not** that generated audio is corre
 
 ## Song YAML fields
 
-- \`lyrics\`: exact UTF-8 lyrics, **never rewritten** by the compiler.
-- \`target_vocabulary\`: exact German phrases that must appear.
-- \`min_repetitions\`: minimum occurrences per phrase (default 2; low counts warn).
-- \`language\`: \`de\` for strict German-script policy (default).
-- \`allow_bilingual\`: set \`true\` to permit Arabic lyric text intentionally.
-- \`cefr\`, \`age_range\`, \`bpm\`, \`duration_seconds\`: teaching and production profile.
-- \`style\`, \`vocal_direction\`, \`provider\`, \`title\`: generator directions.
-- \`instrumental_only\`: incompatible with written sung lyrics (blocking).
-- \`max_words_per_line\`: warning threshold for young learners (default 12).
+- `lyrics`: exact UTF-8 lyrics, **never rewritten** by the compiler.
+- `target_vocabulary`: exact German phrases that must appear.
+- `min_repetitions`: minimum occurrences per phrase (default 2; low counts warn).
+- `language`: `de` for strict German-script policy (default).
+- `allow_bilingual`: set `true` to permit Arabic lyric text intentionally.
+- `cefr`, `age_range`, `bpm`, `duration_seconds`: teaching and production profile.
+- `style`, `vocal_direction`, `provider`, `title`: generator directions.
+- `instrumental_only`: incompatible with written sung lyrics (blocking).
+- `max_words_per_line`: warning threshold for young learners (default 12).
 
 ## Deterministic checks
 
 - Required words/phrases absent or repeated too few times.
 - A **limited, explicitly curated** set of known German noun/article pairs
-  (e.g., \`der Hund\`, \`die Katze\`, \`das Pferd\`). This is **not** a German grammar engine.
+  (e.g., `der Hund`, `die Katze`, `das Pferd`). This is **not** a German grammar engine.
 - Arabic script in German-only lyrics.
 - Vocals vs. instrumental-only contradictions.
 - Unsupported CEFR label, extreme/unspecified tempo, overlong lines and
