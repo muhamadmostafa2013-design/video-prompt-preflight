@@ -156,7 +156,8 @@ window.VPP = window.VPP || {};
       .map(([name,prompt])=>{
         const tok=Math.max(1,Math.round(prompt.length/4));
         const neg=(prompt.match(/\b(?:no|not|never|without|avoid|don't|do not|must not)\b/gi)||[]).length;
-        const cov=coverage(scene,prompt);
+        const cov=scene.source_prompt&&!name.startsWith("SOURCE")?
+          Math.min(99,coverage(scene,prompt)):coverage(scene,prompt);
         let score=100-Math.min(25,tok/30)-Math.min(20,neg*(provider==="runway"?3:1))-(100-cov)*.8;
         if(name.startsWith("C")&&scene.timeline?.length)score+=5;
         if(name.startsWith("A")&&scene.rules?.no_arabic_on_screen)score+=4;
