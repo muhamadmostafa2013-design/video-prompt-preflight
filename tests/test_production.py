@@ -1,7 +1,7 @@
 """Production security and offline regression tests; no Gemini API calls."""
 import json
-from pathlib import Path
 import shutil
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
