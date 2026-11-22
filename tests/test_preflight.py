@@ -308,7 +308,7 @@ def test_condensed_candidate_cannot_claim_lossless_character_identity():
         'German student says: "Ich bin neu hier." No music. No subtitles.'
     )
     candidates = build_candidates(parse_prompt(prompt), "gemini_omni")
-    source = [c for c in candidates if c.name.startswith("SOURCE")][0]
+    source = next(c for c in candidates if c.name.startswith("SOURCE"))
     others = [c for c in candidates if not c.name.startswith("SOURCE")]
     assert source.hard_constraint_coverage == 100
     assert all(c.hard_constraint_coverage < 100 for c in others)
