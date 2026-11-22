@@ -330,3 +330,13 @@ def test_german_only_output_without_audio_is_rejected(monkeypatch):
     assert "expected_speech_audio" in {
         item["name"] for item in result["checks"]
     }
+
+
+def test_optimizer_preserves_source_without_reintroducing_text_morph():
+    prompt = (
+        "Create a 10-second 9:16 video.\nON SCREEN:\nlaufen\nsich verlaufen\n"
+        "TIMELINE:\n0-10s transform laufen into sich verlaufen"
+    )
+    result = optimize_prompt(prompt)
+    assert "hard cut" in result["optimized_prompt"].lower()
+    assert "transform laufen into sich verlaufen" not in result["optimized_prompt"].lower()
