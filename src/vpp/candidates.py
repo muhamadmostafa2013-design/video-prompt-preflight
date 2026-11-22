@@ -145,6 +145,22 @@ def _coverage(scene: dict, prompt: str) -> int:
     return round(found / len(required) * 100)
 
 
+def _safe_source(scene: dict, source: str) -> str:
+    """Preserve free-form instructions, only rewriting confirmed text morph beats."""
+    exact = scene.get("screen_text") or []
+    if not exact:
+        return source
+    out = []
+    for line in source.splitlines():
+        match = re.match(r"^(\s*\d+(?:\.\d+)?\s*[-–—]\s*"
+                         r"\d+(?:\.\d+)?s\s+)(.*)$", line)
+        if match:
+            out.append(match.group(1) + _safe_text_action(match.group(2), exact))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
 def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
     prompts = [
         ("A · strict compiler", compile_scene(scene)),
@@ -155,7 +171,9 @@ def build_candidates(scene: dict, provider: str = "generic") -> list[Candidate]:
     # is the sole safe automatic winner until semantic fidelity is verified.
     source = str(scene.get("source_prompt", "") or "").strip()
     if source:
-        prompts.insert(0, ("SOURCE · lossless original", source))
+        # Keep exactly three candidate slots for API and browser parity.
+        # A compact version is advisory; free-form visual details must survive.
+        prompts[1] = ("SOURCE · lossless original", _safe_source(scene, source))
     out: list[Candidate] = []
     for name, prompt in prompts:
         neg = _negative_count(prompt)
