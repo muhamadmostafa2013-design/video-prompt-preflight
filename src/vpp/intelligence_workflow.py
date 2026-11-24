@@ -30,7 +30,7 @@ def guarded_repair(audio, lyrics, srt, alignment_run, independent_tracks, output
     # model family is required by the agreement gate; no fake independence.
     primary = {"backend": "whisperx", "family": "whisper", "model": "alignment",
                "audio_sha256": source_hash, "words": words}
-    agreement = compare_tracks([primary, *independent_tracks], source_hash, tolerance_ms)
+    agreement = compare_tracks([primary, *independent_tracks], source_hash, tolerance_ms, duration=duration)
     captions = parse_srt(Path(srt).read_text(encoding="utf-8-sig"))
     lines = [x.strip() for x in Path(lyrics).read_text(encoding="utf-8-sig").splitlines() if x.strip()]
     before = audit_sync(captions, lines, words, duration, min_score=max(.5, score),
@@ -76,13 +76,16 @@ def write_dashboard(report, path):
         return f"<details><summary>{safe(label)}</summary><pre>{raw}</pre></details>"
 
     decision = safe(report.get("decision", "unknown"))
-    agreement = report.get("agreement", {})
-    before = report.get("before", {})
-    after = report.get("after", {})
+    def obj(value):
+        return value if isinstance(value, dict) else {}
+
+    agreement = obj(report.get("agreement"))
+    before = obj(report.get("before"))
+    after = obj(report.get("after"))
     cards = [("Decision", decision),
              ("Model agreement", safe(agreement.get("decision", "not supplied"))),
-             ("Before: max drift (ms)", safe(before.get("metrics", {}).get("max_absolute_ms", "—"))),
-             ("After: max drift (ms)", safe(after.get("metrics", {}).get("max_absolute_ms", "—")))]
+             ("Before: max drift (ms)", safe(obj(before.get("metrics")).get("max_absolute_ms", "—"))),
+             ("After: max drift (ms)", safe(obj(after.get("metrics")).get("max_absolute_ms", "—")))]
     card_html = "".join(f"<article><small>{label}</small><b>{value}</b></article>" for label, value in cards)
     sections = "".join(section(key, value) for key, value in report.items())
     doc = ('<!doctype html><html lang="en"><meta charset="utf-8">'

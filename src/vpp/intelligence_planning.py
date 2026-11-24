@@ -36,7 +36,7 @@ def cost_plan(scenes, budget_cents):
     return {"decision": "blocked_budget" if needed > budget_cents else
             "review_unknown" if unknown else "plan_only",
             "actions": rows, "budget_cents": budget_cents, "estimated_provider_cents": needed,
-            "full_regeneration_cents": full, "potential_avoided_cents": full-needed,
+            "full_regeneration_cents": full, "potential_avoided_cents": full-needed if not unknown else None,
             "paid_calls": 0, "publication_approved": False,
             "limitations": "User-supplied estimates exclude local compute, taxes and retry charges. No guaranteed savings."}
 

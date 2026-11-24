@@ -39,7 +39,9 @@ def main():
             prediction = " ".join(w["word"] for w in evidence["words"])
             rows.append({"row_idx": i, "reference": row["transcription"],
                          "prediction": prediction, **text_wer(row["transcription"], prediction),
-                         "word_timestamps": evidence["words"]})
+                         "word_timestamps": evidence["words"], "timing_valid": evidence["timing_valid"],
+                         "timing_issues": evidence["timing_issues"],
+                         "source_duration_seconds": evidence["source_duration_seconds"]})
         report["audio"] = {"dataset": "google/fleurs de_de test", "rows": rows,
                            "wer": sum(r["word_errors"] for r in rows)/sum(r["reference_words"] for r in rows)}
     except Exception as exc:  # noqa: BLE001 -- report independent stage failures
@@ -57,8 +59,11 @@ def main():
                 audio = work / f"sample-{row['row_idx']}.wav"
                 evidence = ctc.transcribe(audio)
                 primary = {"backend": "faster-whisper", "family": "whisper", "model": "small",
-                           "audio_sha256": _hash(audio), "words": row["word_timestamps"]}
-                agreement = compare_tracks([primary, evidence], _hash(audio))
+                           "audio_sha256": _hash(audio), "words": row["word_timestamps"],
+                           "timing_valid": row["timing_valid"],
+                           "source_duration_seconds": row["source_duration_seconds"]}
+                agreement = compare_tracks([primary, evidence], _hash(audio),
+                                           duration=row["source_duration_seconds"])
                 results.append({"row_idx": row["row_idx"], "prediction": evidence["text"],
                                 **text_wer(row["reference"], evidence["text"]),
                                 "agreement": agreement, "timing_valid": evidence["timing_valid"],

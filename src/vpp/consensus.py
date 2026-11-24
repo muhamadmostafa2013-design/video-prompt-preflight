@@ -9,7 +9,7 @@ from .quality_evidence import _read_json, _word_rows, benchmark_words
 from .song_alignment import _hash, _number, _tokens
 
 
-def compare_tracks(tracks, source_sha256, tolerance_ms=100):
+def compare_tracks(tracks, source_sha256, tolerance_ms=100, *, duration=None):
     """Compare exact sequences and all timing boundaries; do not average timestamps."""
     if not isinstance(tracks, list):
         raise TypeError("Tracks must be a list.")
@@ -19,6 +19,8 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100):
         raise ValueError("Invalid source SHA-256.")
     if type(tolerance_ms) is not int or not 0 <= tolerance_ms <= 1000:
         raise ValueError("Tolerance must be 0..1000 ms.")
+    if duration is not None and (not _number(duration) or not 0 < duration <= 1800):
+        raise ValueError("Invalid source duration.")
     ids = set()
     families = set()
     words = []
@@ -48,6 +50,13 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100):
             parsed = _word_rows(t["words"], allow_empty=True)
             if t.get("timing_valid") is False:
                 raise ValueError("Model reported invalid timing evidence.")
+            limit = t.get("source_duration_seconds", duration)
+            if limit is not None and (not _number(limit) or not 0 < limit <= 1800):
+                raise ValueError("Invalid reported source duration.")
+            if duration is not None:
+                limit = min(duration, limit) if limit is not None else duration
+            if limit is not None and any(row[2] > limit for row in parsed):
+                raise ValueError("Word interval exceeds source duration.")
         except (ValueError, TypeError, KeyError):
             issues.append("invalid_word_timestamps")
             invalid_tracks.append({"backend": backend, "model": t.get("model")})

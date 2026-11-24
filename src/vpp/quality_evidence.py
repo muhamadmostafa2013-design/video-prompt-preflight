@@ -27,7 +27,19 @@ def _read_json(path, limit=16_000_000):
     path = Path(path)
     if not path.is_file() or path.stat().st_size > limit:
         raise ValueError("Missing or oversized JSON file.")
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    def unique(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise ValueError("Duplicate JSON object key.")
+            obj[key] = value
+        return obj
+
+    def invalid_constant(_value):
+        raise ValueError("Non-finite JSON constant.")
+
+    return json.loads(path.read_text(encoding="utf-8-sig"),
+                      object_pairs_hook=unique, parse_constant=invalid_constant)
 
 
 def _word_rows(rows, *, allow_empty=False):

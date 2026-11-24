@@ -433,6 +433,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_acoustic_models(sub)
     from .project_quality import register as register_project_quality
     register_project_quality(sub)
+    from .integration_audit import register as register_integration_audit
+    register_integration_audit(sub)
 
     return p
 

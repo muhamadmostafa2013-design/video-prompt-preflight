@@ -37,10 +37,13 @@ def run_project(manifest, output):
                 "scene_manifest", "song_spec", "cost_spec", "prompt"):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
+    for key in ("render", "clean_source", "burn"):
+        if key in spec and type(spec[key]) is not bool:
+            raise ValueError(f"{key} must be a JSON boolean.")
     if not isinstance(spec.get("independent_tracks", []), list):
         raise TypeError("independent_tracks must be a list.")
     track_paths = [_local_path(root, p) for p in spec.get("independent_tracks", [])]
-    if len(track_paths) > 4:
+    if len(track_paths) + int("whisper_model" in paths) + int("ctc_model" in paths) > 4:
         raise ValueError("At most four supplementary tracks.")
     destination = Path(output).resolve()
     destination.mkdir(parents=True, exist_ok=False)
@@ -50,6 +53,9 @@ def run_project(manifest, output):
     def stage(name, fn):
         try:
             value = fn()
+            if not isinstance(value, dict):
+                raise TypeError("Stage evidence must be an object.")
+            json.dumps(value, ensure_ascii=False, allow_nan=False)
         except Exception as exc:  # noqa: BLE001 -- optional model/runtime failure must be visible
             result["stages"][name] = {"status": "failed", "error_type": type(exc).__name__}
             result["decision"] = "blocked"
@@ -109,7 +115,7 @@ def run_project(manifest, output):
         skip("semantics", "Scene manifest and local CLIP model required.", blocked=True)
     if "song_spec" in paths:
         review = stage("education", lambda: education_review(_read_json(paths["song_spec"])))
-        if review is not None and review["decision"] == "blocked":
+        if review is not None and (review["decision"] == "blocked" or review.get("curriculum_issues")):
             result["decision"] = "blocked"
     else:
         skip("education", "No curriculum specification provided.")

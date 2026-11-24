@@ -14,19 +14,25 @@ def asr_evidence(audio, model_dir):
     """Real faster-whisper inference using only a local model directory."""
     from faster_whisper import WhisperModel
 
+    from .acoustic_models import _audio, ctc_timing_issues, native_boundary
+
     audio = Path(audio).resolve(strict=True)
     model_dir = Path(model_dir).resolve(strict=True)
     if not model_dir.is_dir():
         raise ValueError("A downloaded local model directory is required.")
     model = WhisperModel(str(model_dir), device="cpu", compute_type="int8", local_files_only=True)
-    segments, info = model.transcribe(str(audio), language="de", word_timestamps=True,
+    samples = _audio(audio, 300)
+    duration = len(samples)/16000
+    segments, info = model.transcribe(samples, language="de", word_timestamps=True,
                                       beam_size=5, condition_on_previous_text=False)
     words = []
     for segment in segments:
         for word in segment.words or []:
-            words.append({"word": word.word.strip(), "start": word.start,
-                          "end": word.end, "asr_probability": word.probability})
+            words.append({"word": word.word.strip(), "start": native_boundary(word.start),
+                          "end": native_boundary(word.end), "asr_probability": native_boundary(word.probability)})
+    issues = ctc_timing_issues(words, duration)
     return {"audio_sha256": _hash(audio), "words": words, "language": info.language,
+            "source_duration_seconds": duration, "timing_valid": not issues, "timing_issues": issues,
             "model": model_dir.name, "backend": "faster-whisper", "family": "whisper",
             "publication_approved": False,
             "limitations": "ASR timestamps are not forced-alignment scores or human labels."}
@@ -35,9 +41,9 @@ def asr_evidence(audio, model_dir):
 def rank_scene(labels, scores, minimum_margin=.03):
     if len(labels) < 2 or len(labels) != len(scores) or len(set(labels)) != len(labels):
         raise ValueError("Supply distinct expected and alternative descriptions with corresponding scores.")
-    if any(type(s) not in (int, float) or not math.isfinite(s) for s in scores):
+    if any(type(s) not in (int, float) or not math.isfinite(s) or not -1.000001 <= s <= 1.000001 for s in scores):
         raise ValueError("Non-finite model score.")
-    if not 0 < minimum_margin <= 1:
+    if type(minimum_margin) not in (int, float) or not 0 < minimum_margin <= 1:
         raise ValueError("Invalid margin.")
     margin = scores[0] - max(scores[1:])
     return {"expected": labels[0], "ranking": sorted(
