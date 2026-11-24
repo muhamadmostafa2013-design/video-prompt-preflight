@@ -6,7 +6,9 @@ import io
 import json
 import math
 import random
+import re
 import subprocess
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -46,6 +48,11 @@ def phrase_issues(text, targets):
     return issues
 
 
+def _case_tokens(text):
+    # German noun capitalization is meaningful; do not reuse ASR lowercasing.
+    return re.findall(r"[^\W_]+(?:['’\-][^\W_]+)*", unicodedata.normalize("NFC", text))
+
+
 def caption_observation(expected, observed, outside=(), targets=None):
     """OCR evidence only. Both a missing expected token and extra text require review."""
     if not isinstance(expected, str) or not isinstance(observed, str):
@@ -60,6 +67,8 @@ def caption_observation(expected, observed, outside=(), targets=None):
         issues.append({"code": "unexpected_caption_tokens", "tokens": extra})
     if want and got and not missing and not extra and want != got:
         issues.append({"code": "caption_token_order_differs"})
+    if want == got and _case_tokens(expected) != _case_tokens(observed):
+        issues.append({"code": "caption_capitalization_differs"})
     if not want and got:
         issues.append({"code": "text_detected_in_clean_or_gap_region"})
     if any(_tokens(text) for text in outside):
@@ -199,7 +208,8 @@ def simulate_caption_faults(seed=20261124, trials=1200):
     rng = random.Random(seed)
     targets = ["einen Termin vereinbaren", "eine Frage stellen",
                "einen Antrag stellen", "eine Entscheidung treffen"]
-    cases = ("clean", "missing_noun", "duplicate", "residual_side", "reordered", "clean_with_text")
+    cases = ("clean", "missing_noun", "duplicate", "residual_side", "reordered",
+             "clean_with_text", "wrong_capitalization")
     counts, failures = Counter(), []
     for i in range(trials):
         case = cases[i % len(cases)]
@@ -217,6 +227,8 @@ def simulate_caption_faults(seed=20261124, trials=1200):
             observed = " ".join(reversed(words))
         elif case == "clean_with_text":
             expected = ""
+        elif case == "wrong_capitalization":
+            observed = target.lower()
         result = caption_observation(expected, observed, outside, [target])
         if (result["decision"] == "sample_consistent") != (case == "clean") or result["publication_approved"]:
             failures.append({"trial": i, "case": case})

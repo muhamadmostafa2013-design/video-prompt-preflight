@@ -78,3 +78,42 @@ def onset_benchmark(reference, prediction, duration):
             "matched_onset_p95_ms": errors[math.ceil(.95*len(errors))-1] if errors else None,
             "publication_approved": False,
             "limitations": "Onsets only; repeated lyrics can make text-only edit alignment ambiguous. Matched-word error is conditional; all-word coverage penalizes missing words."}
+
+
+PAIRED_METHODS = ("raw_whisper", "demucs_whisper", "demucs_whisperx")
+
+
+def paired_summary(rows, expected_tracks):
+    """Compare methods only on identical, complete reference coverage."""
+    expected = list(expected_tracks)
+    if not expected or len(set(expected)) != len(expected):
+        raise ValueError("Expected unique benchmark track IDs.")
+    seen = set()
+    complete = []
+    for row in rows:
+        track = row["track"]
+        if track in seen or track not in expected:
+            raise ValueError("Duplicate or unexpected benchmark track.")
+        seen.add(track)
+        if not all(name in row for name in PAIRED_METHODS):
+            continue
+        sizes = {row[name]["reference_words"] for name in PAIRED_METHODS}
+        if len(sizes) != 1 or next(iter(sizes)) <= 0:
+            raise ValueError("Paired methods must use the same nonempty reference.")
+        complete.append(row)
+    report = {"status": "complete" if len(complete) == len(expected) else "incomplete",
+              "expected_tracks": len(expected), "paired_tracks": [row["track"] for row in complete],
+              "missing_tracks": [track for track in expected if track not in {r["track"] for r in complete}],
+              "comparison": None, "publication_approved": False}
+    if report["status"] != "complete":
+        return report
+    comparison = {}
+    for name in PAIRED_METHODS:
+        items = [row[name] for row in complete]
+        n = sum(item["reference_words"] for item in items)
+        comparison[name] = {"reference_words": n,
+                            "wer": sum(item["word_errors"] for item in items)/n,
+                            "coverage_100ms": sum(item["within_100ms"] for item in items)/n,
+                            "coverage_200ms": sum(item["within_200ms"] for item in items)/n}
+    report["comparison"] = comparison
+    return report

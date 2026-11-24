@@ -1,6 +1,6 @@
 import pytest
 
-from vpp.singing_benchmark import onset_benchmark
+from vpp.singing_benchmark import PAIRED_METHODS, onset_benchmark, paired_summary
 
 
 def test_missing_word_penalized_and_onset_not_chosen_by_time():
@@ -31,3 +31,27 @@ def test_empty_prediction():
 def test_invalid_reference_refuses_fabricated_onsets():
     with pytest.raises(ValueError):
         onset_benchmark([{"word": "ein Verb", "start": 1}], [], 2)
+
+
+
+def test_paired_summary_refuses_incomplete_comparison():
+    score = onset_benchmark([{"word": "ein", "start": 1}], [{"word": "ein", "start": 1}], 2)
+    rows = [{"track": "a", **dict.fromkeys(PAIRED_METHODS, score)},
+            {"track": "b", "raw_whisper": score}]
+    report = paired_summary(rows, ["a", "b"])
+    assert report["status"] == "incomplete"
+    assert report["missing_tracks"] == ["b"]
+    assert report["comparison"] is None
+    assert not report["publication_approved"]
+
+
+def test_paired_summary_complete_and_reference_consistency():
+    score = onset_benchmark([{"word": "ein", "start": 1}], [{"word": "ein", "start": 1}], 2)
+    rows = [{"track": "a", **dict.fromkeys(PAIRED_METHODS, score)}]
+    report = paired_summary(rows, ["a"])
+    assert report["status"] == "complete"
+    assert report["comparison"]["raw_whisper"]["coverage_100ms"] == 1
+    assert not report["publication_approved"]
+    rows[0]["demucs_whisperx"] = {**score, "reference_words": 2}
+    with pytest.raises(ValueError, match="same nonempty reference"):
+        paired_summary(rows, ["a"])

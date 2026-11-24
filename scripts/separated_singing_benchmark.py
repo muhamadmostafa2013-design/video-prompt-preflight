@@ -12,7 +12,7 @@ from public_singing_benchmark import TRACKS, download
 
 from vpp.acoustic_models import native_boundary
 from vpp.model_evidence import asr_evidence
-from vpp.singing_benchmark import onset_benchmark
+from vpp.singing_benchmark import PAIRED_METHODS, onset_benchmark, paired_summary
 
 
 def main():
@@ -66,7 +66,9 @@ def main():
             errors.append({"track": track, "error_type": type(exc).__name__, "message": str(exc)[:400]})
     report = {"dataset": "JamendoLyrics, same three fixed first-minute excerpts", "rows": rows,
               "errors": errors, "publication_approved": False}
-    for name in ("raw_whisper", "demucs_whisper", "demucs_whisperx"):
+    report["paired_comparison"] = paired_summary(rows, TRACKS)
+    # Individual method aggregates may have different track coverage; diagnostic only.
+    for name in PAIRED_METHODS:
         items = [r[name] for r in rows if name in r]
         n = sum(r["reference_words"] for r in items)
         if n:
@@ -77,7 +79,7 @@ def main():
     print(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
     Path("separated-singing-report.json").write_text(json.dumps(report, ensure_ascii=False,
         indent=2, allow_nan=False), encoding="utf-8")
-    return bool(errors) or len(rows) != len(TRACKS)
+    return bool(errors) or report["paired_comparison"]["status"] != "complete"
 
 
 if __name__ == "__main__":

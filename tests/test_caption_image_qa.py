@@ -69,3 +69,16 @@ def test_real_encoded_caption_ocr(tmp_path):
     assert "possible_residual_text_outside_panel" in codes
     assert "possible_incomplete_target_phrase" in codes
     assert result["decision"] == "needs_review"
+
+
+@pytest.mark.parametrize("expected,observed", [("einen Termin vereinbaren", "einen termin vereinbaren"),
+                                             ("Ich höre Musik", "ich höre Musik")])
+def test_german_caption_capitalization_is_not_ignored(expected, observed):
+    result = caption_observation(expected, observed)
+    assert result["decision"] == "needs_review"
+    assert result["issues"] == [{"code": "caption_capitalization_differs"}]
+    assert not result["publication_approved"]
+
+
+def test_unicode_canonical_equivalence_not_a_capitalization_error():
+    assert caption_observation("Ich höre Musik", "Ich ho\u0308re Musik")["decision"] == "sample_consistent"
