@@ -1,7 +1,6 @@
 """Local song post-production QA; machine alignment is never listening approval."""
 from __future__ import annotations
 
-import argparse
 import hashlib
 import json
 import math
@@ -27,7 +26,8 @@ def audit_words(lines, words, duration, min_score=0.5):
         raise ValueError("Positive finite audio duration required.")
     if not _number(min_score) or not 0 <= min_score <= 1:
         raise ValueError("min_score must be in [0, 1].")
-    if not lines or any(not isinstance(line, str) or not _tokens(line) for line in lines):
+    if not isinstance(lines, (list, tuple)) or not lines or any(
+            not isinstance(line, str) or not _tokens(line) for line in lines):
         raise ValueError("Reference needs nonempty lyric lines, including all repeats.")
     if not isinstance(words, list):
         raise ValueError("word_segments must be a list.")
@@ -166,7 +166,13 @@ def run_alignment(args):
         if not args.allow_model_downloads:
             command += ["--model_cache_only", "True"]
         _run(command, output / "whisperx.log", env)
-        raw = json.loads((asr_dir / "vocals.json").read_text(encoding="utf-8"))
+        evidence_path = asr_dir / "vocals.json"
+        raw = json.loads(evidence_path.read_text(encoding="utf-8"))
+        report["evidence_schema"] = "vpp.whisperx.words.v1"
+        report["word_evidence_sha256"] = _hash(evidence_path)
+        report["reference_sha256"] = _hash(Path(args.lyrics))
+        report["min_score"] = args.min_score
+        report["model"] = args.model
         report["stage"] = "word_evidence"
         evidence = audit_words(lines, raw.get("word_segments", []), duration, args.min_score)
         report.update(evidence)

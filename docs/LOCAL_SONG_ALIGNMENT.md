@@ -17,3 +17,41 @@ The command separates the vocals, checks stem duration, transcribes German and u
 ## Test evidence
 
 The real song was probed as 180.479958 seconds, and Demucs execution was attempted. The pretrained weights could not download due to DNS failure in the execution environment; WhisperX is not installed there. No real-song word alignment or human listening claim is made. Unit tests use synthetic word evidence to exercise the release gate, not actual song inference. Real-model integration remains pending. Do not commit private source recordings or derived transcripts.
+
+
+## Subtitle Sync QA and safe repair (v0.6 development)
+
+Run a new `align-song` job first: older runs do not include the evidence schema
+and hashes required by this gate. Then use:
+
+```bash
+vpp subtitle-sync old.srt --audio song.mp3 --lyrics exact-sung-de.txt \
+  --alignment-run alignment-run -o sync-audit --repair
+```
+
+This is free/local, with no model inference required during the SRT audit.
+It uses the saved WhisperX word intervals, not beat timing. The existing
+SRT may split/merge reference lines if the complete German word sequence
+matches exactly. Plain SRT only: German on the first text line, optional
+Arabic translation(s) on subsequent lines. Indexes must be sequential.
+Text mismatch, missing repeats, low scores, missing or overlapping acoustic
+word intervals and evidence hash mismatches block repair. No edits to original
+captions or recordings. Hashes detect file changes, not fabricated provenance.
+
+The JSON includes signed onset and end error (positive = subtitle late),
+MAE, p95 absolute boundary error (nearest-rank), max absolute error, early/late
+counts, original overlaps and out-of-range cues. The first-minute report uses
+cues whose acoustic start is below 60 seconds. Default tolerance 150 ms is a
+configurable engineering target, not a validated perceptual limit.
+
+With `--repair`, the program writes a separate SRT draft preserving all
+German/Arabic text and uses actual first/last word intervals, then re-audits
+the resulting draft. A zero residual means agreement with machine evidence,
+not proof that speech recognition or translation is correct. Exit 3 always
+means review required; exit 2 blocks. No burned-in video replacement, audio
+rewriting, human approval or automatic publication. The raw ASR files and
+report may include personal data; keep them local.
+
+Regression fixtures deliberately inject unequal late and early cues,
+overlaps, missing repetitions, incorrect German, corrupt timestamps and
+modified source files. These validate the algorithm, not real-song accuracy.
