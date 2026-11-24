@@ -417,6 +417,9 @@ def build_parser() -> argparse.ArgumentParser:
     director.add_argument("--prompt-out", help="Write final generator prompts only if ready")
     director.set_defaults(func=cmd_director_review)
 
+    from .song_alignment import register as register_song_alignment
+    register_song_alignment(sub)
+
     return p
 
 
