@@ -9,7 +9,10 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from PIL import Image
 from pyarrow.parquet import ParquetFile
 
+from vpp.acoustic_models import LocalGermanCTC
+from vpp.consensus import compare_tracks
 from vpp.model_evidence import LocalCLIP, asr_evidence, text_wer
+from vpp.song_alignment import _hash
 
 
 def download(url, destination):
@@ -41,6 +44,25 @@ def main():
                            "wer": sum(r["word_errors"] for r in rows)/sum(r["reference_words"] for r in rows)}
     except Exception as exc:  # noqa: BLE001 -- report independent stage failures
         errors.append({"stage": "asr", "type": type(exc).__name__, "message": str(exc)[:600]})
+    try:
+        model = snapshot_download("aware-ai/wav2vec2-base-german", allow_patterns=[
+            "config.json", "model.safetensors", "preprocessor_config.json",
+            "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "vocab.json"])
+        ctc = LocalGermanCTC(model)
+        results = []
+        for row in report["audio"]["rows"]:
+            audio = work / f"sample-{row['row_idx']}.wav"
+            evidence = ctc.transcribe(audio)
+            primary = {"backend": "faster-whisper", "family": "whisper", "model": "small",
+                       "audio_sha256": _hash(audio), "words": row["word_timestamps"]}
+            agreement = compare_tracks([primary, evidence], _hash(audio))
+            results.append({"row_idx": row["row_idx"], "prediction": evidence["text"],
+                            **text_wer(row["reference"], evidence["text"]),
+                            "agreement": agreement})
+        report["ctc"] = {"rows": results, "wer": sum(r["word_errors"] for r in results) /
+                         sum(r["reference_words"] for r in results)}
+    except Exception as exc:  # noqa: BLE001 -- report independent stage failures
+        errors.append({"stage": "ctc", "type": type(exc).__name__, "message": str(exc)[:600]})
     try:
         model = snapshot_download("openai/clip-vit-base-patch32",
                                   revision="bfc19449bc6f18c54292b85378cbccc3ad91a24e", allow_patterns=[

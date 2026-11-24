@@ -429,6 +429,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_model_evidence(sub)
     from .intelligence_workflow import register as register_intelligence_workflow
     register_intelligence_workflow(sub)
+    from .acoustic_models import register as register_acoustic_models
+    register_acoustic_models(sub)
 
     return p
 

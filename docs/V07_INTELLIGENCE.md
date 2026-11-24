@@ -14,3 +14,9 @@ All outputs remain review-only. No generation, upload or paid calls are performe
 - `quality-dashboard report.json -o report.html`: offline escaped report viewer with no scripts or external resources. Does not overwrite files.
 
 Full automatic phoneme recognition, lip-sync detection, character continuity, learned grammar/semantic assessment, calibrated prediction and UI integration with all model runners require independent datasets and validation. No real-song validation is implied by unit tests. Keep private recordings/reports local. Do not treat declared model family or hashes as proof of provenance.
+
+## Optional independent acoustic models
+
+`vpp ctc-evidence sample.mp3 --model-dir /local/german-ctc` uses a Wav2Vec2 CTC model (e.g. aware-ai/wav2vec2-base-german) with word timestamps and a 300-second bound. Explicit local safetensors, FFmpeg and Transformers/Torch required. The public model smoke also attempts this backend on the same three public FLEURS clips and compares the evidence to faster-whisper. Expect disagreements: a blocked consensus is useful evidence, not an integration failure.
+
+`vpp phoneme-evidence short.wav --model-dir /local/phoneme-ctc` requires a trusted local Wav2Vec2 phoneme tokenizer configuration and safetensors weights, max 30 seconds. It returns CTC phone labels; no automatic IPA pronunciation correctness, accent grading or time-alignment approval. The public smoke does not download the larger phoneme model; actual inference on it remains unverified. The upstream phoneme model may require trusted offline conversion to safetensors. Do not load arbitrary pickle or remote model code.

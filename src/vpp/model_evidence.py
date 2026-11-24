@@ -27,7 +27,7 @@ def asr_evidence(audio, model_dir):
             words.append({"word": word.word.strip(), "start": word.start,
                           "end": word.end, "asr_probability": word.probability})
     return {"audio_sha256": _hash(audio), "words": words, "language": info.language,
-            "model": model_dir.name, "backend": "faster-whisper",
+            "model": model_dir.name, "backend": "faster-whisper", "family": "whisper",
             "publication_approved": False,
             "limitations": "ASR timestamps are not forced-alignment scores or human labels."}
 
