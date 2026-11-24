@@ -156,3 +156,16 @@ def test_appearance_continuity_flags_nonmatching_samples():
     assert result["groups"][0]["status"] == "appearance_review"
     assert result["groups"][0]["flagged_seconds"] == [3]
     assert not result["publication_approved"]
+
+
+def test_consensus_invalid_ctc_timing_blocks_with_diagnostics():
+    a = track("whisperx", "whisper")
+    b = track("wav2vec2-ctc", "wav2vec2")
+    b["words"][0]["end"] = b["words"][0]["start"]
+    report = compare_tracks([a, b], HASH)
+    assert report["decision"] == "blocked"
+    assert "invalid_word_timestamps" in report["issues"]
+    assert report["invalid_tracks"][0]["backend"] == "wav2vec2-ctc"
+    assert not report["publication_approved"]
+    b = track("faster-whisper", "unrelated")
+    assert "model_family_mismatch" in compare_tracks([a, b], HASH)["issues"]

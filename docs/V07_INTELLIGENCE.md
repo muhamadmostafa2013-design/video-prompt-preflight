@@ -17,9 +17,9 @@ Full automatic phoneme recognition, lip-sync detection, character continuity, le
 
 ## Optional independent acoustic models
 
-`vpp ctc-evidence sample.mp3 --model-dir /local/german-ctc` uses a Wav2Vec2 CTC model (e.g. aware-ai/wav2vec2-base-german) with word timestamps and a 300-second bound. Explicit local safetensors, FFmpeg and Transformers/Torch required. The public model smoke also attempts this backend on the same three public FLEURS clips and compares the evidence to faster-whisper. Expect disagreements: a blocked consensus is useful evidence, not an integration failure.
+`vpp ctc-evidence sample.mp3 --model-dir /local/german-ctc` uses a Wav2Vec2 CTC model (e.g. aware-ai/wav2vec2-base-german) with word timestamps and a 300-second bound. Explicit local safetensors, FFmpeg and Transformers/Torch required. The public model smoke also attempts this backend on the same three public FLEURS clips and compares the evidence to faster-whisper. Expect disagreements: a blocked consensus is useful evidence, not an integration failure. Raw invalid CTC intervals are retained with timing_issues, and are blocked from repair; textual WER is reported separately.
 
-`vpp phoneme-evidence short.wav --model-dir /local/phoneme-ctc` requires a trusted local Wav2Vec2 phoneme tokenizer configuration and safetensors weights, max 30 seconds. It returns CTC phone labels; no automatic IPA pronunciation correctness, accent grading or time-alignment approval. The public smoke does not download the larger phoneme model; actual inference on it remains unverified. The upstream phoneme model may require trusted offline conversion to safetensors. Do not load arbitrary pickle or remote model code.
+`vpp phoneme-evidence short.wav --model-dir /local/phoneme-ctc` requires a trusted local Wav2Vec2 phoneme tokenizer configuration and safetensors weights, max 30 seconds. It returns CTC phone labels; no automatic IPA pronunciation correctness, accent grading or time-alignment approval. The public smoke attempts the upstream phoneme model's safetensors conversion (refs/pr/4, published weight SHA-256 verified). Successful execution is distinct from pronunciation accuracy; check CI results. Do not load arbitrary pickle or remote model code.
 
 ## Appearance continuity and dashboard
 

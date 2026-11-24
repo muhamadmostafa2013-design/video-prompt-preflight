@@ -6,8 +6,7 @@ import subprocess
 from itertools import groupby
 from pathlib import Path
 
-from .quality_evidence import _word_rows
-from .song_alignment import _hash
+from .song_alignment import _hash, _number, _tokens
 
 
 def _audio(path, seconds):
@@ -40,6 +39,27 @@ def _local_model(model_dir):
     return path, extractor, model
 
 
+def ctc_timing_issues(words, duration):
+    """Record model faults without shifting, rounding or dropping invalid words."""
+    issues = []
+    if not words:
+        return [{"code": "empty_word_track"}]
+    previous_end = 0.0
+    for i, row in enumerate(words):
+        start, end = row.get("start"), row.get("end")
+        if not isinstance(row.get("word"), str) or len(_tokens(row["word"])) != 1:
+            issues.append({"index": i+1, "code": "not_one_lexical_token"})
+        if not (_number(start) and _number(end)):
+            issues.append({"index": i+1, "code": "missing_or_nonfinite_boundary"})
+        elif not 0 <= start < end <= duration:
+            issues.append({"index": i+1, "code": "invalid_or_out_of_range_interval"})
+        else:
+            if start < previous_end:
+                issues.append({"index": i+1, "code": "overlapping_boundary"})
+            previous_end = max(previous_end, end)
+    return issues
+
+
 class LocalGermanCTC:
     def __init__(self, model_dir):
         from transformers import AutoTokenizer, pipeline
@@ -59,11 +79,13 @@ class LocalGermanCTC:
         for item in result.get("chunks", []):
             start, end = item["timestamp"]
             words.append({"word": item["text"].strip(), "start": start, "end": end})
-        # Refuse invalid/empty intervals instead of inventing them.
-        _word_rows(words, allow_empty=True)
+        duration = len(samples)/16000
+        issues = ctc_timing_issues(words, duration)
         return {"backend": "wav2vec2-ctc", "family": "wav2vec2",
                 "model": self.path.name, "audio_sha256": _hash(path),
                 "text": result["text"], "words": words,
+                "source_duration_seconds": duration, "timing_valid": not issues,
+                "timing_issues": issues,
                 "publication_approved": False,
                 "limitations": "Independent CTC model estimates, not human timing. Word errors may differ from Whisper."}
 

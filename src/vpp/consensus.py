@@ -23,6 +23,9 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100):
     families = set()
     words = []
     issues = []
+    invalid_tracks = []
+    known_families = {"whisperx": "whisper", "faster-whisper": "whisper",
+                      "wav2vec2-ctc": "wav2vec2"}
     for t in tracks:
         if not isinstance(t, dict):
             raise TypeError("Track must be an object.")
@@ -34,21 +37,36 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100):
         if identifier in ids:
             issues.append("duplicate_model_track")
         ids.add(identifier)
-        families.add(family.casefold().strip())
+        declared = family.casefold().strip()
+        canonical = known_families.get(identifier[0], declared)
+        if declared != canonical:
+            issues.append("model_family_mismatch")
+        families.add(canonical)
         if t.get("audio_sha256") != source_sha256:
             issues.append("source_hash_mismatch")
-        words.append(_word_rows(t["words"], allow_empty=True))
+        try:
+            parsed = _word_rows(t["words"], allow_empty=True)
+            if t.get("timing_valid") is False:
+                raise ValueError("Model reported invalid timing evidence.")
+        except (ValueError, TypeError, KeyError):
+            issues.append("invalid_word_timestamps")
+            invalid_tracks.append({"backend": backend, "model": t.get("model")})
+            parsed = None
+        words.append(parsed)
     if len(families) < 2:
         issues.append("shared_model_family")
-    if not words[0] or any(not w for w in words):
+    if any(w == [] for w in words):
         issues.append("empty_track")
     comparisons = []
     if words[0]:
-        for track in tracks[1:]:
+        for index, track in enumerate(tracks[1:], 1):
+            if words[index] is None:
+                continue
             result = benchmark_words(tracks[0]["words"], track["words"], tolerance_ms)
             comparisons.append({"backend": track["backend"], "model": track.get("model"),
                                 "wer_vs_primary": result["wer"], "timing": result["timing"]})
-    same_text = bool(words[0]) and all([w[0] for w in t] == [w[0] for w in words[0]] for t in words)
+    same_text = bool(words[0]) and all(t is not None and [w[0] for w in t] ==
+                                       [w[0] for w in words[0]] for t in words)
     disagreements = []
     if not same_text:
         issues.append("word_sequence_disagrees")
@@ -64,7 +82,8 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100):
             issues.append("boundary_disagreement")
     return {"decision": "blocked" if issues else "review_agreement",
             "issues": sorted(set(issues)), "pairwise_vs_primary": comparisons,
-            "disagreements": disagreements, "distinct_declared_families": len(families),
+            "disagreements": disagreements, "invalid_tracks": invalid_tracks,
+            "distinct_declared_families": len(families),
             "primary_retained": True, "audio_sha256": source_sha256,
             "publication_approved": False, "human_listening_verified": False,
             "limitations": "Family labels and hashes are declared provenance, not proof of independence. Agreement is not ground truth."}
