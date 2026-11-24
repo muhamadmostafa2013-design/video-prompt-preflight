@@ -5,11 +5,11 @@ import hashlib
 import json
 import math
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
 import unicodedata
+from pathlib import Path
 
 
 def _tokens(text):
@@ -30,7 +30,7 @@ def audit_words(lines, words, duration, min_score=0.5):
             not isinstance(line, str) or not _tokens(line) for line in lines):
         raise ValueError("Reference needs nonempty lyric lines, including all repeats.")
     if not isinstance(words, list):
-        raise ValueError("word_segments must be a list.")
+        raise TypeError("word_segments must be a list.")
     expected = [token for line in lines for token in _tokens(line)]
     observed = []
     issues = []

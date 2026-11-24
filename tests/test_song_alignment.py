@@ -1,4 +1,5 @@
 import pytest
+
 from vpp.song_alignment import audit_words, draft_srt
 
 

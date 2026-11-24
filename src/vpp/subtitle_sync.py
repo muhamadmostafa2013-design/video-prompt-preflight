@@ -29,8 +29,10 @@ def _ms(parts):
 
 def parse_srt(text):
     """Strict UTF-8 SRT; German is the first text line; translations follow."""
-    if not isinstance(text, str) or len(text) > _MAX_TEXT:
-        raise ValueError("Invalid or oversized SRT.")
+    if not isinstance(text, str):
+        raise TypeError("SRT must be text.")
+    if len(text) > _MAX_TEXT:
+        raise ValueError("Oversized SRT.")
     text = text.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not text:
         raise ValueError("Empty SRT.")
@@ -86,9 +88,13 @@ def audit_sync(captions, reference_lines, words, duration, *, min_score=.5, tole
     """Re-segment validated words by caption boundaries, preserving caption text."""
     if type(tolerance_ms) is not int or not 0 <= tolerance_ms <= 1000:
         raise ValueError("Tolerance must be 0..1000 ms.")
-    if not isinstance(words, list) or len(words) > _MAX_WORDS:
-        raise ValueError("Invalid or oversized word evidence.")
-    if not isinstance(captions, list) or not captions:
+    if not isinstance(words, list):
+        raise TypeError("Word evidence must be a list.")
+    if len(words) > _MAX_WORDS:
+        raise ValueError("Oversized word evidence.")
+    if not isinstance(captions, list):
+        raise TypeError("Captions must be a list.")
+    if not captions:
         raise ValueError("At least one parsed SRT cue is required.")
     report = {
         "decision": "blocked", "timing_status": "unverified", "issues": [],
