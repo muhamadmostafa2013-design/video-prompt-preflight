@@ -1,0 +1,29 @@
+name: public-model-smoke
+on:
+  push:
+    branches: ['feature/local-song-word-alignment']
+    paths: ['.github/workflows/public-model-smoke.yml', 'scripts/public_model_smoke.py', 'src/vpp/model_evidence.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e . 'faster-whisper==1.2.1' 'transformers==4.57.3' pillow
+      - run: pip install 'torch==2.8.0' 'torchvision==0.23.0' --index-url https://download.pytorch.org/whl/cpu
+      - run: python scripts/public_model_smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: public-model-smoke-report
+          path: model-smoke-report.json
+          if-no-files-found: warn

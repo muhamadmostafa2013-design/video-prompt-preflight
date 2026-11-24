@@ -425,6 +425,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_quality_engine(sub)
     from .quality_evidence import register as register_quality_evidence
     register_quality_evidence(sub)
+    from .model_evidence import register as register_model_evidence
+    register_model_evidence(sub)
 
     return p
 
