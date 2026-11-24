@@ -66,3 +66,12 @@ modified source files. These validate the algorithm, not real-song accuracy.
 - `vpp repair-video clean.mp4 --audio clean.mp4 --lyrics exact-sung-de.txt --srt old.srt --alignment-run alignment-run -o review-output --clean-source`: recompute repair from source-bound evidence, mux selectable subtitles, re-extract and compare SRT, preserve exact audio/video packet hashes and timestamps. Add `--burn` to create an experimental libass rendered draft (visual verification required; video re-encoded). Use a clean source without baked captions. Align the exact same media first; different decoded audio or timeline blocks repair.
 
 No publication approval is generated; exit 3 = review. Actual media mux tests use a synthetic tone, not real singing. The synthetic fault corpus encodes error types without private recordings. Real acoustic benchmarks, human annotated ground truth, learned visual identity/scene matching, contextual grammar and translation assessment remain unvalidated. The new CLI is not a browser feature. `--burn` requires manual glyph/RTL/safe-area QA.
+
+
+### Independent evaluation and feedback
+
+- `vpp benchmark-alignment --audio source.mp3 --reference human.json --prediction machine.json`. Each JSON object must include `audio_sha256` and `words` (list of word/start/end records in seconds); reference additionally declares `annotation_source: "human"`. The declaration is not proof. Word edit distance/WER and, only for exact word sequences, boundary MAE/p95 and timing tolerance metrics are reported. Use independently annotated real recordings before claiming acoustic accuracy.
+- `vpp scene-review --expected expected.json --observed observed.json --duration 30`. Both manifests contain scene IDs and start/end seconds; expected rows include required_tags/forbidden_tags arrays; observed rows contain tags annotated by a reviewer. Checks coverage, alignment and explicit tag differences. No image recognition is implied.
+- `vpp failure-memory --file local-memory.json --record subtitle_drift`. Local aggregate categories and counts only, with regression test mapping. Omit --record to view prioritized failures. Single writer; no automatic rule/model training. Do not commit local memory or private media.
+
+These components provide evidence infrastructure, not a trained visual/language model.

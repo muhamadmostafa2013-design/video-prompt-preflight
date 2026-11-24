@@ -423,6 +423,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_subtitle_sync(sub)
     from .quality_engine import register as register_quality_engine
     register_quality_engine(sub)
+    from .quality_evidence import register as register_quality_evidence
+    register_quality_evidence(sub)
 
     return p
 

@@ -20,3 +20,12 @@
 ## Release rule
 Do not claim video correctness from sample frames or a transcript alone.
 The automated status is evidence, not a certificate; content always requires human review.
+
+
+## v0.6 development branch — quality-engine milestones
+
+- Local word-alignment integration and source-bound subtitle repair.
+- Review-only MP4 mux/burn draft, encoded packet checks, full decode and sampled visual heuristics.
+- Curated DE/AR glossary QA, local model readiness, seeded fault injection.
+- Independent annotation benchmark, reviewer-supplied scene checks, aggregate failure memory.
+- Still gated: real-song inference and measured accuracy, real-world benchmarks, learned identity/scene/semantic and grammar analysis, production browser integration, safe-area/RTL visual verification and human release sign-off.
