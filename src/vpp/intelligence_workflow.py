@@ -5,8 +5,18 @@ import html
 import json
 from pathlib import Path
 
-from .consensus import audiovisual_review, compare_tracks, empirical_risk, phoneme_review
-from .intelligence_planning import cost_plan, education_review, model_route, mutate_prompts
+from .consensus import (
+    audiovisual_review,
+    compare_tracks,
+    empirical_risk,
+    phoneme_review,
+)
+from .intelligence_planning import (
+    cost_plan,
+    education_review,
+    model_route,
+    mutate_prompts,
+)
 from .quality_evidence import _read_json
 from .song_alignment import _hash
 from .subtitle_sync import audit_sync, load_evidence, parse_srt, repair_srt
@@ -57,17 +67,38 @@ def write_dashboard(report, path):
     """Offline self-contained report viewer: escape every untrusted value, no JS or external assets."""
     if not isinstance(report, dict):
         raise TypeError("Report must be an object.")
-    escaped = html.escape(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False))
-    decision = html.escape(str(report.get("decision", "unknown")))
+    def safe(value):
+        return html.escape(str(value))
+
+    def section(label, value):
+        raw = safe(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False))
+        return f"<details><summary>{safe(label)}</summary><pre>{raw}</pre></details>"
+
+    decision = safe(report.get("decision", "unknown"))
+    agreement = report.get("agreement", {})
+    before = report.get("before", {})
+    after = report.get("after", {})
+    cards = [("Decision", decision),
+             ("Model agreement", safe(agreement.get("decision", "not supplied"))),
+             ("Before: max drift (ms)", safe(before.get("metrics", {}).get("max_absolute_ms", "—"))),
+             ("After: max drift (ms)", safe(after.get("metrics", {}).get("max_absolute_ms", "—")))]
+    card_html = "".join(f"<article><small>{label}</small><b>{value}</b></article>" for label, value in cards)
+    sections = "".join(section(key, value) for key, value in report.items())
     doc = ('<!doctype html><html lang="en"><meta charset="utf-8">'
            '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
            '<meta name="viewport" content="width=device-width, initial-scale=1">'
-           '<title>VPP local quality report</title><style>body{font:16px system-ui;'
-           'max-width:1000px;margin:32px auto;padding:0 18px;color:#172033;background:#fafafa}'
-           'pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:20px;background:white;'
-           'border:1px solid #ccd3df;border-radius:12px}h1{font-size:28px}</style>'
-           '<main><h1>VPP Quality Report</h1><p>Evidence only. Human review required.</p>'
-           f'<p>Decision: <strong>{decision}</strong></p><pre>{escaped}</pre></main></html>')
+           '<title>VPP local quality report</title><style>*{box-sizing:border-box}'
+           'body{font:16px system-ui;max-width:1120px;margin:32px auto;padding:0 18px;'
+           'color:#172033;background:#f5f7fb}header{margin-bottom:20px}h1{font-size:28px;margin:0}'
+           '.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}'
+           'article,details{background:white;border:1px solid #ccd3df;border-radius:12px;padding:16px}'
+           'article small,article b{display:block}article b{margin-top:8px;font-size:22px;overflow-wrap:anywhere}'
+           'details{margin:10px 0}summary{cursor:pointer;font-weight:600;overflow-wrap:anywhere}'
+           'pre{white-space:pre-wrap;overflow-wrap:anywhere}footer{font-size:14px;color:#536075}</style>'
+           '<main><header><h1>VPP Quality Report</h1><p>Evidence only. Human review required.</p></header>'
+           f'<section class="grid" aria-label="Quality summary">{card_html}</section>'
+           f'<h2>Evidence details</h2>{sections}'
+           '<footer>Local report · No uploads · Not a publication certificate</footer></main></html>')
     with Path(path).open("x", encoding="utf-8") as handle:
         handle.write(doc)
 

@@ -29,3 +29,11 @@ The automated status is evidence, not a certificate; content always requires hum
 - Curated DE/AR glossary QA, local model readiness, seeded fault injection.
 - Independent annotation benchmark, reviewer-supplied scene checks, aggregate failure memory.
 - Still gated: real-song inference and measured accuracy, real-world benchmarks, learned identity/scene/semantic and grammar analysis, production browser integration, safe-area/RTL visual verification and human release sign-off.
+
+## v0.7 development branch
+
+- Multi-family consensus and bounded local repair; independent German CTC and optional local phone inference.
+- Caption/scene interval review, sampled appearance-description continuity and curriculum constraints.
+- Empirical failure-rate reporting, budget planning and local model routing; no automatic provider calls.
+- Seeded prompt mutation regressions and a local summary dashboard.
+- Remaining validation: annotated real singing, model-backed phone evaluation, real visual benchmarks, calibrated prediction and an integrated model execution interface. No automatic publication.

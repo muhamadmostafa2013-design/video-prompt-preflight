@@ -2,8 +2,18 @@ import json
 
 import pytest
 
-from vpp.consensus import audiovisual_review, compare_tracks, empirical_risk, phoneme_review
-from vpp.intelligence_planning import cost_plan, education_review, model_route, mutate_prompts
+from vpp.consensus import (
+    audiovisual_review,
+    compare_tracks,
+    empirical_risk,
+    phoneme_review,
+)
+from vpp.intelligence_planning import (
+    cost_plan,
+    education_review,
+    model_route,
+    mutate_prompts,
+)
 from vpp.intelligence_workflow import guarded_repair, write_dashboard
 from vpp.song_alignment import _hash
 from vpp.subtitle_sync import parse_srt
@@ -131,4 +141,18 @@ def test_guarded_repair_blocks_same_family_and_preserves_original(tmp_path):
     assert result["decision"] == "review"
     assert result["after"]["metrics"]["max_absolute_ms"] == 0
     assert srt.read_text(encoding="utf-8") == old
+    assert not result["publication_approved"]
+
+
+def test_appearance_continuity_flags_nonmatching_samples():
+    from vpp.model_evidence import continuity_signals
+    samples = [
+        {"appearance_group": "costume", "seconds": 1, "appearance": {
+            "expected": "a blue jacket", "signal": "supports_expected"}},
+        {"appearance_group": "costume", "seconds": 3, "appearance": {
+            "expected": "a blue jacket", "signal": "alternative_ranked_higher"}},
+    ]
+    result = continuity_signals(samples)
+    assert result["groups"][0]["status"] == "appearance_review"
+    assert result["groups"][0]["flagged_seconds"] == [3]
     assert not result["publication_approved"]

@@ -76,6 +76,32 @@ class LocalCLIP:
         return rank_scene(labels, scores)
 
 
+def continuity_signals(samples):
+    """Aggregate scene/appearance checks; missing or disagreeing evidence remains review."""
+    groups = {}
+    for sample in samples:
+        group = sample.get("appearance_group")
+        if group:
+            groups.setdefault(group, []).append(sample)
+    rows = []
+    for name, items in groups.items():
+        labels = {item["appearance"]["expected"] for item in items}
+        signals = [item["appearance"]["signal"] for item in items]
+        if len(labels) != 1:
+            status = "conflicting_expected_descriptions"
+        elif len(items) < 2:
+            status = "insufficient_samples"
+        elif any(x != "supports_expected" for x in signals):
+            status = "appearance_review"
+        else:
+            status = "sampled_description_consistent"
+        rows.append({"group": name, "samples": len(items), "status": status,
+                     "flagged_seconds": [item["seconds"] for item in items
+                                         if item["appearance"]["signal"] != "supports_expected"]})
+    return {"groups": rows, "publication_approved": False,
+            "limitations": "Whole-frame descriptions of clothing, props and style only; not facial recognition or person identity."}
+
+
 def semantic_scan(video, model_dir, scenes, samples=3):
     """Sample each scene and compare explicit descriptions; no identity inference."""
     from PIL import Image
@@ -92,13 +118,24 @@ def semantic_scan(video, model_dir, scenes, samples=3):
     if not math.isfinite(duration) or not 0 < duration <= 1800:
         raise ValueError("Video duration must be 0..1800 seconds.")
     previous = 0.0
+    seen = set()
     for scene in scenes:
+        sid = scene["id"]
+        if not isinstance(sid, str) or not sid.strip() or sid in seen:
+            raise ValueError("Unique nonempty scene ID required.")
+        seen.add(sid)
         start, end = scene["start"], scene["end"]
         if not 0 <= start < end <= duration or start < previous:
             raise ValueError("Invalid or overlapping scene interval.")
         previous = end
         if not isinstance(scene["expected"], str) or not isinstance(scene["alternatives"], list):
             raise TypeError("Expected description and alternatives required.")
+        if "appearance" in scene:
+            appearance = scene["appearance"]
+            if (not isinstance(appearance, dict) or not isinstance(appearance.get("group"), str) or
+                    not appearance["group"].strip() or not isinstance(appearance.get("expected"), str) or
+                    not isinstance(appearance.get("alternatives"), list)):
+                raise ValueError("Appearance requires group, expected description and alternatives.")
     model = LocalCLIP(model_dir)
     rows = []
     for scene in scenes:
@@ -110,9 +147,14 @@ def semantic_scan(video, model_dir, scenes, samples=3):
                                     "-vf", "scale=512:-2", "-f", "image2pipe", "-vcodec", "png", "-"],
                                    capture_output=True, check=True, timeout=45).stdout
             with Image.open(io.BytesIO(frame)) as image:
-                rows.append({"scene": scene["id"], "seconds": round(at, 3), **model.compare(image, labels)})
+                row = {"scene": scene["id"], "seconds": round(at, 3), **model.compare(image, labels)}
+                if "appearance" in scene:
+                    appearance = scene["appearance"]
+                    row["appearance_group"] = appearance["group"]
+                    row["appearance"] = model.compare(image, [appearance["expected"], *appearance["alternatives"]])
+                rows.append(row)
     return {"decision": "review", "model": model.model_name, "video_sha256": _hash(path),
-            "samples": rows, "publication_approved": False,
+            "samples": rows, "appearance_continuity": continuity_signals(rows), "publication_approved": False,
             "limitations": "Relative CLIP similarity only; cannot prove scene meaning, absence, person identity, continuity or correctness between samples."}
 
 
