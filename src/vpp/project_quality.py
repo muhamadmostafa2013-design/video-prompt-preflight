@@ -38,7 +38,7 @@ def run_project(manifest, output):
                 "scene_manifest", "song_spec", "cost_spec", "prompt"):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
-    for key in ("render", "clean_source", "burn"):
+    for key in ("render", "clean_source", "burn", "caption_image_qa"):
         if key in spec and type(spec[key]) is not bool:
             raise ValueError(f"{key} must be a JSON boolean.")
     if not isinstance(spec.get("independent_tracks", []), list):
@@ -151,6 +151,7 @@ def run_project(manifest, output):
         clean = stage("clean_caption_ocr", lambda: scan_caption_images(
             paths["video"], paths["srt"], mode="clean",
             panel=spec.get("caption_panel", (0., .70, 1., 1.)),
+            inspection=spec.get("caption_inspection"), language=spec.get("caption_language", "deu+eng"),
             max_samples=spec.get("caption_max_samples", 180)))
         if clean is None or clean["decision"] != "sample_consistent":
             result["decision"] = "blocked"
@@ -171,6 +172,7 @@ def run_project(manifest, output):
             destination / "video-review" / "DRAFT_REQUIRES_HUMAN_REVIEW.mp4",
             destination / "video-review" / "repaired.srt",
             panel=spec.get("caption_panel", (0., .70, 1., 1.)),
+            inspection=spec.get("caption_inspection"), language=spec.get("caption_language", "deu+eng"),
             max_samples=spec.get("caption_max_samples", 180)))
         if checked is None or checked["decision"] != "sample_consistent":
             result["decision"] = "blocked"

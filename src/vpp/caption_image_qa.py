@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import math
+import random
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -93,7 +94,8 @@ def _ocr(image, language, min_confidence):
 
 def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
                         panel=(0., .70, 1., 1.), language="deu+eng",
-                        max_samples=180, min_confidence=40, samples_per_cue=3):
+                        max_samples=180, min_confidence=40, samples_per_cue=3,
+                        inspection=None):
     """Inspect multiple points per caption and gap, and side strips of the declared panel."""
     if mode not in ("clean", "rendered"):
         raise ValueError("Mode must be clean or rendered.")
@@ -102,6 +104,14 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
     x0, y0, x1, y1 = panel
     if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
         raise ValueError("Invalid normalized caption panel.")
+    if inspection is None:
+        inspection = (0., y0, 1., 1.)
+    if (not isinstance(inspection, (list, tuple)) or len(inspection) != 4 or
+            any(not _number(x) for x in inspection)):
+        raise ValueError("Inspection region must have four finite coordinates.")
+    ix0, iy0, ix1, iy1 = inspection
+    if not (0 <= ix0 <= x0 < x1 <= ix1 <= 1 and 0 <= iy0 <= y0 < y1 <= iy1 <= 1):
+        raise ValueError("Inspection must contain the caption panel.")
     if language not in ("deu+eng", "deu", "eng", "ara", "deu+eng+ara"):
         raise ValueError("Unsupported OCR language.")
     if type(max_samples) is not int or not 1 <= max_samples <= 600:
@@ -143,13 +153,16 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
         raise ValueError("Sample limit exceeded; split the review or increase explicit limit.")
     bounds = (round(x0*width), round(y0*height), round(x1*width), round(y1*height))
     left, top, right, bottom = bounds
+    il, it, ir, ib = round(ix0*width), round(iy0*height), round(ix1*width), round(iy1*height)
     regions = [("panel", left, top, right-left, bottom-top)]
-    if left >= 16:
-        regions.append(("left_strip", 0, top, left, bottom-top))
-    if width-right >= 16:
-        regions.append(("right_strip", right, top, width-right, bottom-top))
-    if height-bottom >= 16:
-        regions.append(("bottom_strip", 0, bottom, width, height-bottom))
+    if left-il >= 16:
+        regions.append(("left_strip", il, top, left-il, bottom-top))
+    if ir-right >= 16:
+        regions.append(("right_strip", right, top, ir-right, bottom-top))
+    if ib-bottom >= 16:
+        regions.append(("bottom_strip", il, bottom, ir-il, ib-bottom))
+    if top-it >= 16:
+        regions.append(("top_strip", il, it, ir-il, top-it))
     if right-left < 16 or bottom-top < 16:
         raise ValueError("Caption panel is too small.")
     rows = []
@@ -157,9 +170,10 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
         observed = {}
         uncertain = 0
         for name, x, y, w, h in regions:
+            factor = 3 if min(w, h) < 120 else 1
             image = _run(["ffmpeg", "-v", "error", "-nostdin", "-protocol_whitelist", "file,pipe",
                           "-ss", f"{seconds:.6f}", "-i", str(path), "-frames:v", "1",
-                          "-vf", f"crop={w}:{h}:{x}:{y}", "-f", "image2pipe", "-vcodec", "png", "-"])
+                          "-vf", f"crop={w}:{h}:{x}:{y},scale={w*factor}:{h*factor}", "-f", "image2pipe", "-vcodec", "png", "-"])
             if not image:
                 raise ValueError("No frame extracted.")
             text, rejected = _ocr(image, language, min_confidence)
@@ -178,10 +192,51 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
             "limitations": "Sampled OCR of declared lower panel and adjacent strips; not full-frame/all-frame text absence. Arabic not checked unless selected."}
 
 
+def simulate_caption_faults(seed=20261124, trials=1200):
+    """Known-answer OCR-observation faults; no claim about real OCR recall."""
+    if type(trials) is not int or not 1 <= trials <= 10000:
+        raise ValueError("Trials must be 1..10000.")
+    rng = random.Random(seed)
+    targets = ["einen Termin vereinbaren", "eine Frage stellen",
+               "einen Antrag stellen", "eine Entscheidung treffen"]
+    cases = ("clean", "missing_noun", "duplicate", "residual_side", "reordered", "clean_with_text")
+    counts, failures = Counter(), []
+    for i in range(trials):
+        case = cases[i % len(cases)]
+        counts[case] += 1
+        target = rng.choice(targets)
+        words = target.split()
+        expected, observed, outside = target, target, []
+        if case == "missing_noun":
+            observed = f"{words[0]} {words[-1]}"
+        elif case == "duplicate":
+            observed += " " + rng.choice(words)
+        elif case == "residual_side":
+            outside = [rng.choice(["Ic", "Termin", "alt"])]
+        elif case == "reordered":
+            observed = " ".join(reversed(words))
+        elif case == "clean_with_text":
+            expected = ""
+        result = caption_observation(expected, observed, outside, [target])
+        if (result["decision"] == "sample_consistent") != (case == "clean") or result["publication_approved"]:
+            failures.append({"trial": i, "case": case})
+    return {"trials": trials, "seed": seed, "counts": dict(counts),
+            "failed_trials": len(failures), "failures": failures[:100],
+            "publication_approved": False,
+            "basis": "synthetic OCR observations, not actual OCR accuracy"}
+
+
+def _simulate(args):
+    result = simulate_caption_faults(args.seed, args.trials)
+    print(json.dumps(result, indent=2))
+    return 2 if result["failed_trials"] else 0
+
+
 def _command(args):
     targets = json.loads(Path(args.targets).read_text(encoding="utf-8")) if args.targets else []
     result = scan_caption_images(args.video, args.srt, mode=args.mode, targets=targets,
-                                 panel=args.panel, language=args.language, max_samples=args.max_samples)
+                                 panel=args.panel, language=args.language, max_samples=args.max_samples,
+                                 inspection=args.inspection)
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
     return 2 if result["decision"] == "needs_review" else 3
 
@@ -193,6 +248,11 @@ def register(sub):
     parser.add_argument("--targets")
     parser.add_argument("--mode", choices=["clean", "rendered"], default="rendered")
     parser.add_argument("--panel", type=float, nargs=4, default=(0., .70, 1., 1.))
+    parser.add_argument("--inspection", type=float, nargs=4)
     parser.add_argument("--language", default="deu+eng")
     parser.add_argument("--max-samples", type=int, default=180)
     parser.set_defaults(func=_command)
+    sim = sub.add_parser("caption-fault-simulate", help="Seeded caption fault simulation")
+    sim.add_argument("--seed", type=int, default=20261124)
+    sim.add_argument("--trials", type=int, default=1200)
+    sim.set_defaults(func=_simulate)

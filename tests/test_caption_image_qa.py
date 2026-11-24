@@ -1,6 +1,14 @@
+import shutil
+import subprocess
+
 import pytest
 
-from vpp.caption_image_qa import caption_observation, phrase_issues
+from vpp.caption_image_qa import (
+    caption_observation,
+    phrase_issues,
+    scan_caption_images,
+    simulate_caption_faults,
+)
 
 
 @pytest.mark.parametrize("phrase", ["einen Termin vereinbaren", "einen Antrag stellen",
@@ -29,3 +37,35 @@ def test_clean_source_text_is_review_not_certification():
 def test_reordered_and_duplicate_words():
     assert caption_observation("Ein Verb", "Verb Ein")["issues"][0]["code"] == "caption_token_order_differs"
     assert caption_observation("Ein Verb", "Ein Verb Verb")["issues"][0]["code"] == "unexpected_caption_tokens"
+
+
+@pytest.mark.parametrize("seed", [11, 97, 20261124])
+def test_seeded_caption_faults(seed):
+    result = simulate_caption_faults(seed, 1200)
+    assert result["failed_trials"] == 0
+    assert sum(result["counts"].values()) == 1200
+
+
+def test_real_encoded_caption_ocr(tmp_path):
+    if not all(shutil.which(b) for b in ("ffmpeg", "ffprobe", "tesseract")):
+        pytest.skip("FFmpeg and Tesseract needed.")
+    font = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    from pathlib import Path
+    if not Path(font).is_file():
+        pytest.skip("Fixture font unavailable.")
+    video = tmp_path / "caption.mp4"
+    srt = tmp_path / "expected.srt"
+    srt.write_text("1\n00:00:00,000 --> 00:00:02,000\neinen Termin vereinbaren\n", encoding="utf-8")
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+        "color=black:s=720x480:r=10:d=2", "-vf",
+        f"drawtext=fontfile={font}:text=einen vereinbaren:fontsize=34:fontcolor=white:x=180:y=365,"
+        f"drawtext=fontfile={font}:text=ALT:fontsize=26:fontcolor=white:x=18:y=365",
+        "-c:v", "mpeg4", str(video)], check=True, capture_output=True, timeout=30)
+    result = scan_caption_images(video, srt, targets=["einen Termin vereinbaren"],
+        panel=(.18, .72, .98, .9), inspection=(0., .72, 1., .9),
+        language="eng", samples_per_cue=1)
+    codes = {issue["code"] for row in result["rows"] for issue in row["issues"]}
+    assert "expected_caption_tokens_missing" in codes
+    assert "possible_residual_text_outside_panel" in codes
+    assert "possible_incomplete_target_phrase" in codes
+    assert result["decision"] == "needs_review"
