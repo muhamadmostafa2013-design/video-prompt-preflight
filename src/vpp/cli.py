@@ -435,6 +435,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_project_quality(sub)
     from .integration_audit import register as register_integration_audit
     register_integration_audit(sub)
+    from .caption_image_qa import register as register_caption_image_qa
+    register_caption_image_qa(sub)
 
     return p
 

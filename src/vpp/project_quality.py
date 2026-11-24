@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .acoustic_models import LocalGermanCTC, phoneme_evidence
+from .caption_image_qa import scan_caption_images
 from .consensus import audiovisual_review
 from .intelligence_planning import cost_plan, education_review
 from .intelligence_workflow import guarded_repair, write_dashboard
@@ -146,6 +147,15 @@ def run_project(manifest, output):
             result["decision"] = "blocked"
     else:
         skip("audiovisual", "Verified draft captions and scene manifest required.", blocked=True)
+    if spec.get("caption_image_qa") is True:
+        clean = stage("clean_caption_ocr", lambda: scan_caption_images(
+            paths["video"], paths["srt"], mode="clean",
+            panel=spec.get("caption_panel", (0., .70, 1., 1.)),
+            max_samples=spec.get("caption_max_samples", 180)))
+        if clean is None or clean["decision"] != "sample_consistent":
+            result["decision"] = "blocked"
+    else:
+        skip("clean_caption_ocr", "Optional sampled OCR not requested.")
     if spec.get("render") is True:
         if result["decision"] != "review" or repair is None or spec.get("clean_source") is not True:
             skip("render", "Required checks unresolved or clean-source confirmation missing.", blocked=True)
@@ -155,6 +165,15 @@ def run_project(manifest, output):
                 destination / "video-review", clean_source=True, burn=spec.get("burn") is True))
     else:
         skip("render", "Explicit render option not requested.")
+    if (spec.get("caption_image_qa") is True and spec.get("burn") is True
+            and result["stages"]["render"]["status"] == "completed"):
+        checked = stage("rendered_caption_ocr", lambda: scan_caption_images(
+            destination / "video-review" / "DRAFT_REQUIRES_HUMAN_REVIEW.mp4",
+            destination / "video-review" / "repaired.srt",
+            panel=spec.get("caption_panel", (0., .70, 1., 1.)),
+            max_samples=spec.get("caption_max_samples", 180)))
+        if checked is None or checked["decision"] != "sample_consistent":
+            result["decision"] = "blocked"
     (destination / "project-report.json").write_text(json.dumps(result, ensure_ascii=False, indent=2,
         allow_nan=False), encoding="utf-8")
     write_dashboard(result, destination / "dashboard.html")
