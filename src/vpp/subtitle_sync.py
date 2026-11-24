@@ -12,7 +12,14 @@ import re
 from pathlib import Path
 
 from .quality_evidence import _read_json
-from .song_alignment import _hash, _number, _stamp, _tokens, _written_tokens, audit_words
+from .song_alignment import (
+    _hash,
+    _number,
+    _stamp,
+    _tokens,
+    _written_tokens,
+    audit_words,
+)
 
 _TIMING = re.compile(
     r"(\d{2,}):([0-5]\d):([0-5]\d),(\d{3})[ \t]+-->[ \t]+"
