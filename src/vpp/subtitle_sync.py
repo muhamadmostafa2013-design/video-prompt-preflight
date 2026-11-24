@@ -11,6 +11,7 @@ import math
 import re
 from pathlib import Path
 
+from .quality_evidence import _read_json
 from .song_alignment import _hash, _number, _stamp, _tokens, audit_words
 
 _TIMING = re.compile(
@@ -183,7 +184,7 @@ def _read(path, limit):
 def load_evidence(audio, lyrics, run):
     """Bind evidence to the source recording/reference and detect file changes."""
     run = Path(run)
-    metadata = json.loads(_read(run / "alignment_report.json", _MAX_EVIDENCE))
+    metadata = _read_json(run / "alignment_report.json", _MAX_EVIDENCE)
     raw_path = run / "asr" / "vocals.json"
     if (metadata.get("decision") != "review" or
             metadata.get("evidence_schema") != "vpp.whisperx.words.v1"):
@@ -193,9 +194,9 @@ def load_evidence(audio, lyrics, run):
         if metadata.get(key) != _hash(Path(path)):
             raise ValueError(f"Evidence integrity mismatch: {key}.")
     duration, score = metadata.get("duration_seconds"), metadata.get("min_score")
-    if not _number(duration) or not _number(score) or not 0 <= score <= 1:
+    if not _number(duration) or not 0 < duration <= 1800 or not _number(score) or not 0 <= score <= 1:
         raise ValueError("Invalid acoustic evidence metadata.")
-    raw = json.loads(_read(raw_path, _MAX_EVIDENCE))
+    raw = _read_json(raw_path, _MAX_EVIDENCE)
     return raw.get("word_segments", []), duration, score
 
 

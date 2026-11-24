@@ -5,6 +5,7 @@ import subprocess
 
 import pytest
 
+from vpp.project_quality import run_project
 from vpp.quality_engine import (
     language_review,
     model_readiness,
@@ -119,3 +120,46 @@ def test_unrelated_audio_refused(encoded_fixture, tmp_path):
     with pytest.raises(ValueError, match="audio differs"):
         render_draft(source, other, lyrics, srt, run, tmp_path / "bad", clean_source=True)
     assert not (tmp_path / "bad").exists()
+
+
+@pytest.mark.parametrize("fault", [None, "wrong_source", "scene_conflict"])
+def test_encoded_project_pipeline(encoded_fixture, tmp_path, monkeypatch, fault):
+    """Real decoding, consensus, SRT repair and MP4 mux; fixture model evidence."""
+    source, lyrics, srt, alignment = encoded_fixture
+    before = _hash(source)
+    old = srt.read_bytes()
+    digest = "0"*64 if fault == "wrong_source" else before
+    track = tmp_path / "track.json"
+    track.write_text(json.dumps({"backend": "wav2vec2-ctc", "family": "wav2vec2",
+        "model": "synthetic-fixture", "audio_sha256": digest, "words": [
+            {"word": "Ein", "start": .8, "end": 1.0},
+            {"word": "Nomen", "start": 1.0, "end": 1.4}]}))
+    (tmp_path / "clip").mkdir()
+    scenes = tmp_path / "scenes.json"
+    scenes.write_text(json.dumps([{"id": "a", "start": 0, "end": 4,
+        "expected": "blue frame", "alternatives": ["red frame"],
+        "required_phrases": ["Ein Verb" if fault == "scene_conflict" else "Ein Nomen"]}]))
+    monkeypatch.setattr("vpp.project_quality.semantic_scan",
+                        lambda *args: {"decision": "review",
+                            "samples": [{"signal": "supports_expected"}]})
+    manifest = tmp_path / "project.json"
+    manifest.write_text(json.dumps({"audio": source.name, "video": source.name,
+        "lyrics": lyrics.name, "srt": srt.name, "alignment_run": alignment.name,
+        "clip_model": "clip", "scene_manifest": scenes.name, "independent_tracks": [track.name],
+        "render": True, "clean_source": True}))
+    output = tmp_path / "project-output"
+    report = run_project(manifest, output)
+    assert not report["publication_approved"]
+    assert _hash(source) == before and srt.read_bytes() == old
+    assert (output / "dashboard.html").is_file()
+    target = output / "video-review" / "DRAFT_REQUIRES_HUMAN_REVIEW.mp4"
+    if fault:
+        assert report["decision"] == "blocked"
+        assert not target.exists()
+    else:
+        assert report["decision"] == "review"
+        assert target.is_file()
+        rendered = report["stages"]["render"]["evidence"]
+        assert rendered["audio_packets_and_timeline_preserved"]
+        assert rendered["embedded_subtitle_roundtrip_verified"]
+        assert rendered["post_repair_metrics"]["max_absolute_ms"] == 0

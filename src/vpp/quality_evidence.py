@@ -38,8 +38,14 @@ def _read_json(path, limit=16_000_000):
     def invalid_constant(_value):
         raise ValueError("Non-finite JSON constant.")
 
+    def finite_float(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError("Non-finite JSON number.")
+        return parsed
+
     return json.loads(path.read_text(encoding="utf-8-sig"),
-                      object_pairs_hook=unique, parse_constant=invalid_constant)
+                      object_pairs_hook=unique, parse_constant=invalid_constant, parse_float=finite_float)
 
 
 def _word_rows(rows, *, allow_empty=False):

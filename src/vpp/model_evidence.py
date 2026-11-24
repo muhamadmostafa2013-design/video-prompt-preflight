@@ -7,7 +7,7 @@ import math
 import subprocess
 from pathlib import Path
 
-from .song_alignment import _hash, _tokens
+from .song_alignment import _hash, _number, _tokens
 
 
 def asr_evidence(audio, model_dir):
@@ -41,7 +41,7 @@ def asr_evidence(audio, model_dir):
 def rank_scene(labels, scores, minimum_margin=.03):
     if len(labels) < 2 or len(labels) != len(scores) or len(set(labels)) != len(labels):
         raise ValueError("Supply distinct expected and alternative descriptions with corresponding scores.")
-    if any(type(s) not in (int, float) or not math.isfinite(s) or not -1.000001 <= s <= 1.000001 for s in scores):
+    if any(not _number(s) or not -1.000001 <= s <= 1.000001 for s in scores):
         raise ValueError("Non-finite model score.")
     if type(minimum_margin) not in (int, float) or not 0 < minimum_margin <= 1:
         raise ValueError("Invalid margin.")

@@ -19,7 +19,7 @@ def test_cross_component_simulation(seed):
     assert not report["publication_approved"]
 
 
-@pytest.mark.parametrize("bad", ['{"a": 1, "a": 2}', '{"x": NaN}', '{"x": Infinity}'])
+@pytest.mark.parametrize("bad", ['{"a": 1, "a": 2}', '{"x": NaN}', '{"x": Infinity}', '{"x": 1e999}'])
 def test_reject_ambiguous_json(tmp_path, bad):
     path = tmp_path / "data.json"
     path.write_text(bad)
@@ -67,3 +67,8 @@ def test_report_keeps_valid_unicode(tmp_path):
     path = tmp_path / "report.json"
     path.write_text(json.dumps({"de": "grüßen", "ar": "أهلاً"}, ensure_ascii=False), encoding="utf-8")
     assert _read_json(path)["de"] == "grüßen"
+
+
+def test_huge_numeric_input_is_rejected_without_overflow():
+    with pytest.raises(ValueError):
+        rank_scene(["street", "office"], [10**1000, .1])

@@ -17,7 +17,12 @@ def _tokens(text):
 
 
 def _number(value):
-    return type(value) in (int, float) and math.isfinite(value)
+    if type(value) not in (int, float):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def audit_words(lines, words, duration, min_score=0.5):
@@ -95,7 +100,7 @@ def draft_srt(report, translations=None):
 
 
 def _duration(path):
-    result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+    result = subprocess.run(["ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-show_entries", "format=duration",
                              "-of", "default=nw=1:nk=1", str(path)],
                             check=True, capture_output=True, text=True, timeout=60)
     value = float(result.stdout.strip())
