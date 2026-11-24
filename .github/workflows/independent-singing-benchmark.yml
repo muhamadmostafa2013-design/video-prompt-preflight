@@ -1,0 +1,29 @@
+name: independent-singing-benchmark
+on:
+  push:
+    branches: ['feature/local-song-word-alignment']
+    paths: ['.github/workflows/independent-singing-benchmark.yml', 'scripts/public_singing_benchmark.py', 'src/vpp/singing_benchmark.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  singing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e . 'faster-whisper==1.2.1'
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python scripts/public_singing_benchmark.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: independent-singing-benchmark
+          path: singing-benchmark-report.json
+          if-no-files-found: warn
