@@ -8,8 +8,8 @@ from pathlib import Path
 import whisperx
 from faster_whisper import WhisperModel
 from faster_whisper.utils import download_model
-
 from public_singing_benchmark import TRACKS, download
+
 from vpp.acoustic_models import native_boundary
 from vpp.model_evidence import asr_evidence
 from vpp.singing_benchmark import onset_benchmark

@@ -58,8 +58,8 @@ def test_real_encoded_caption_ocr(tmp_path):
     srt.write_text("1\n00:00:00,000 --> 00:00:02,000\neinen Termin vereinbaren\n", encoding="utf-8")
     subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
         "color=black:s=720x480:r=10:d=2", "-vf",
-        f"drawtext=fontfile={font}:text=einen vereinbaren:fontsize=34:fontcolor=white:x=180:y=365,"
-        f"drawtext=fontfile={font}:text=ALT:fontsize=26:fontcolor=white:x=18:y=365",
+        (f"drawtext=fontfile={font}:text=einen vereinbaren:fontsize=34:fontcolor=white:x=180:y=365,"
+         f"drawtext=fontfile={font}:text=ALT:fontsize=26:fontcolor=white:x=18:y=365"),
         "-c:v", "mpeg4", str(video)], check=True, capture_output=True, timeout=30)
     result = scan_caption_images(video, srt, targets=["einen Termin vereinbaren"],
         panel=(.18, .72, .98, .9), inspection=(0., .72, 1., .9),
