@@ -4,6 +4,7 @@ import os
 import urllib.request
 from pathlib import Path
 
+from faster_whisper.utils import download_model
 from huggingface_hub import hf_hub_download, snapshot_download
 from PIL import Image
 from pyarrow.parquet import ParquetFile
@@ -23,9 +24,7 @@ def main():
               "human_word_boundary_reference": False, "publication_approved": False}
     errors = []
     try:
-        model = snapshot_download("Systran/faster-whisper-small", allow_patterns=[
-            "config.json", "model.bin", "tokenizer.json", "vocabulary.json",
-            "preprocessor_config.json"])
+        model = download_model("small")
         parquet = hf_hub_download("google/fleurs", "de_de/test-00000-of-00001.parquet",
                                   repo_type="dataset", revision="0b98f0538af50329c9b336824d7d697c594b9c26")
         table = next(ParquetFile(parquet).iter_batches(batch_size=3, columns=["audio", "transcription"]))
