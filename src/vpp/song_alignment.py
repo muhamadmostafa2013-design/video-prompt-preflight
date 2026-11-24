@@ -12,8 +12,14 @@ import unicodedata
 from pathlib import Path
 
 
+def _written_tokens(text):
+    """Case-preserving normalized tokens for teacher-authored written text."""
+    return re.findall(r"[^\W_]+(?:['’\-][^\W_]+)*", unicodedata.normalize("NFC", text))
+
+
 def _tokens(text):
-    return re.findall(r"[^\W_]+(?:['’\-][^\W_]+)*", unicodedata.normalize("NFC", text).lower())
+    # Speech recognition comparisons are intentionally case-insensitive.
+    return _written_tokens(unicodedata.normalize("NFC", text).lower())
 
 
 def _number(value):

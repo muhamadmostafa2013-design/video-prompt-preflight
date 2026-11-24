@@ -6,13 +6,11 @@ import io
 import json
 import math
 import random
-import re
 import subprocess
-import unicodedata
 from collections import Counter
 from pathlib import Path
 
-from .song_alignment import _hash, _number, _tokens
+from .song_alignment import _hash, _number, _tokens, _written_tokens
 from .subtitle_sync import parse_srt
 
 
@@ -48,11 +46,6 @@ def phrase_issues(text, targets):
     return issues
 
 
-def _case_tokens(text):
-    # German noun capitalization is meaningful; do not reuse ASR lowercasing.
-    return re.findall(r"[^\W_]+(?:['’\-][^\W_]+)*", unicodedata.normalize("NFC", text))
-
-
 def caption_observation(expected, observed, outside=(), targets=None):
     """OCR evidence only. Both a missing expected token and extra text require review."""
     if not isinstance(expected, str) or not isinstance(observed, str):
@@ -67,7 +60,7 @@ def caption_observation(expected, observed, outside=(), targets=None):
         issues.append({"code": "unexpected_caption_tokens", "tokens": extra})
     if want and got and not missing and not extra and want != got:
         issues.append({"code": "caption_token_order_differs"})
-    if want == got and _case_tokens(expected) != _case_tokens(observed):
+    if want == got and _written_tokens(expected) != _written_tokens(observed):
         issues.append({"code": "caption_capitalization_differs"})
     if not want and got:
         issues.append({"code": "text_detected_in_clean_or_gap_region"})

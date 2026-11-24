@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 from .quality_evidence import _read_json
-from .song_alignment import _hash, _number, _stamp, _tokens, audit_words
+from .song_alignment import _hash, _number, _stamp, _tokens, _written_tokens, audit_words
 
 _TIMING = re.compile(
     r"(\d{2,}):([0-5]\d):([0-5]\d),(\d{3})[ \t]+-->[ \t]+"
@@ -107,8 +107,9 @@ def audit_sync(captions, reference_lines, words, duration, *, min_score=.5, tole
     if validated["decision"] != "review":
         report["issues"].extend(validated["issues"])
         return report
-    expected = [token for line in reference_lines for token in _tokens(line)]
-    observed = [token for cue in captions for token in _tokens(cue["lines"][0])]
+    # Compare written German exactly in case, unlike the ASR transcript.
+    expected = [token for line in reference_lines for token in _written_tokens(line)]
+    observed = [token for cue in captions for token in _written_tokens(cue["lines"][0])]
     if expected != observed:
         report["issues"].append("Caption German differs from validated reference; no automatic rewrite.")
         report["text_differences"] = _changes(expected, observed)

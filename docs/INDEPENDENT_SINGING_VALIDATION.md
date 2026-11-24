@@ -14,3 +14,5 @@ The OCR panel can now be bounded by a separate `--inspection x0 y0 x1 y1` rectan
 
 ## Additional regression gates
 German caption OCR now flags capitalization discrepancies even when lexical tokens match; canonical Unicode equivalence is accepted. The synthetic caption fault simulator includes capitalization. The paired benchmark only reports a comparable aggregate when every method completed every declared track using the same reference count; incomplete runs preserve diagnostic metrics but have no paired comparison. A complete comparison is not an accuracy or publication approval.
+
+The case-preserving written-token check also applies to subtitle synchronization against the teacher-authored reference, before any timestamps are repaired. Speech comparisons remain case-insensitive; ASR cannot establish orthographic capitalization. Punctuation is not certified by these token checks.

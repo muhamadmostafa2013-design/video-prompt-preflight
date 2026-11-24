@@ -131,3 +131,13 @@ def test_evidence_integrity(tmp_path, changed):
     with pytest.raises(ValueError, match="integrity mismatch"):
         run_sync(args)
     assert not args.output.exists()
+
+
+@pytest.mark.parametrize("original,changed", [("Nomen", "nomen"), ("Verb", "verb")])
+def test_caption_case_differs_from_teacher_reference_blocks_repair(original, changed):
+    captions = parse_srt(SRT.replace(original, changed, 1))
+    report = audit_sync(captions, LYRICS, WORDS, 90)
+    assert report["decision"] == "blocked"
+    assert report["text_differences"]
+    with pytest.raises(ValueError):
+        repair_srt(captions, report)
