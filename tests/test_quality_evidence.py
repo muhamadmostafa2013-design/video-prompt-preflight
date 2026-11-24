@@ -41,3 +41,11 @@ def test_failure_memory_prioritizes_only_known_categories(tmp_path):
     assert not result["auto_changes_rules"]
     with pytest.raises(ValueError):
         failure_memory(file, "private raw prompt")
+
+
+def test_empty_prediction_counts_all_words_as_deleted():
+    ref = [{"word": "Ein", "start": 1, "end": 1.2}]
+    result = benchmark_words(ref, [])
+    assert result["wer"] == 1
+    assert result["timing"] is None
+    assert result["decision"] == "text_mismatch"

@@ -30,16 +30,16 @@ def _read_json(path, limit=16_000_000):
     return json.loads(path.read_text(encoding="utf-8-sig"))
 
 
-def _word_rows(rows):
+def _word_rows(rows, *, allow_empty=False):
     if not isinstance(rows, list):
         raise TypeError("Expected a word list.")
-    if not 1 <= len(rows) <= 2000:
-        raise ValueError("Benchmark requires 1..2000 words per track.")
+    if len(rows) > 2000 or (not rows and not allow_empty):
+        raise ValueError("Benchmark requires a nonempty reference and at most 2000 words per track.")
     result = []
     previous = 0.0
     for row in rows:
         if not isinstance(row, dict) or not isinstance(row.get("word"), str):
-            raise ValueError("Malformed word record.")
+            raise TypeError("Malformed word record.")
         tokens = _tokens(row["word"])
         start, end = row.get("start"), row.get("end")
         if (len(tokens) != 1 or not _number(start) or not _number(end) or
@@ -64,7 +64,7 @@ def benchmark_words(reference, prediction, tolerance_ms=150):
     """Compare machine timestamps with independent, supplied reference labels."""
     if type(tolerance_ms) is not int or not 0 <= tolerance_ms <= 1000:
         raise ValueError("Tolerance must be 0..1000 ms.")
-    ref, pred = _word_rows(reference), _word_rows(prediction)
+    ref, pred = _word_rows(reference), _word_rows(prediction, allow_empty=True)
     expected, observed = [x[0] for x in ref], [x[0] for x in pred]
     distance = _edit_distance(expected, observed)
     result = {"reference_words": len(ref), "predicted_words": len(pred),
@@ -109,7 +109,7 @@ def scene_review(expected, observed, duration):
         actual[row["id"]] = row
     for row in expected:
         if not isinstance(row, dict) or not isinstance(row.get("id"), str):
-            raise ValueError("Malformed expected scene.")
+            raise TypeError("Malformed expected scene.")
         sid = row["id"]
         tags, banned = row.get("required_tags", []), row.get("forbidden_tags", [])
         if (sid in seen or not isinstance(tags, list) or not isinstance(banned, list) or

@@ -152,6 +152,8 @@ def render_draft(video, audio, lyrics, old_srt, alignment_run, output, *, clean_
     audio = Path(audio).resolve(strict=True)
     info = _probe(video)
     v, a = _one_stream(info, "video"), _one_stream(info, "audio")
+    if not 0 < float(info["format"]["duration"]) <= 1800:
+        raise ValueError("Render supports videos up to 30 minutes.")
     for stream in (v, a):
         if abs(float(stream.get("start_time", 0))) > .001:
             raise ValueError("Nonzero stream start: normalize and align the exact clean source first.")
@@ -204,6 +206,8 @@ def render_draft(video, audio, lyrics, old_srt, alignment_run, output, *, clean_
                             "-f", "srt", "-"]).decode("utf-8")
             if parse_srt(decoded) != parse_srt(repaired):
                 raise ValueError("Embedded subtitle roundtrip differs from repaired draft.")
+        _run(["ffmpeg", "-v", "error", "-xerror", "-i", str(target), "-map", "0:a:0",
+              "-vn", "-f", "null", "-"], timeout=600)
         visual = visual_scan(target)
         result_path = output / "DRAFT_REQUIRES_HUMAN_REVIEW.mp4"
         shutil.copyfile(target, result_path)
@@ -211,7 +215,8 @@ def render_draft(video, audio, lyrics, old_srt, alignment_run, output, *, clean_
     result = {"decision": "review", "publication_approved": False, "human_listening_verified": False,
               "mode": "burned_draft" if burn else "selectable_subtitles",
               "source_sha256": _hash(video), "output_sha256": _hash(result_path),
-              "audio_packets_and_timeline_preserved": True,
+              "audio_packets_and_timeline_preserved": True, "full_audio_decode": "completed",
+              "packet_timestamp_tolerance_ms": 1,
               "video_packets_and_timeline_preserved": not burn,
               "embedded_subtitle_roundtrip_verified": not burn,
               "post_repair_metrics": recheck["metrics"], "visual": visual,

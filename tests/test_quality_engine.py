@@ -90,3 +90,32 @@ def test_require_clean_source(encoded_fixture, tmp_path):
     source, lyrics, srt, run = encoded_fixture
     with pytest.raises(ValueError, match="burned-in"):
         render_draft(source, source, lyrics, srt, run, tmp_path / "output", clean_source=False)
+
+
+def test_actual_burned_draft(encoded_fixture, tmp_path):
+    source, lyrics, srt, run = encoded_fixture
+    filters = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], check=True,
+                             capture_output=True, text=True, timeout=20).stdout
+    encoders = subprocess.run(["ffmpeg", "-hide_banner", "-encoders"], check=True,
+                              capture_output=True, text=True, timeout=20).stdout
+    if " subtitles " not in filters or "libx264" not in encoders:
+        pytest.skip("FFmpeg needs libass subtitles and libx264.")
+    result = render_draft(source, source, lyrics, srt, run, tmp_path / "burn",
+                          clean_source=True, burn=True)
+    assert result["mode"] == "burned_draft"
+    assert result["audio_packets_and_timeline_preserved"]
+    assert result["full_audio_decode"] == "completed"
+    assert not result["video_packets_and_timeline_preserved"]
+    assert not result["publication_approved"]
+    assert (tmp_path / "burn" / "DRAFT_REQUIRES_HUMAN_REVIEW.mp4").is_file()
+
+
+def test_unrelated_audio_refused(encoded_fixture, tmp_path):
+    source, lyrics, srt, run = encoded_fixture
+    other = tmp_path / "different.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+                    "sine=frequency=800:sample_rate=48000:duration=4", str(other)],
+                   check=True, capture_output=True, timeout=20)
+    with pytest.raises(ValueError, match="audio differs"):
+        render_draft(source, other, lyrics, srt, run, tmp_path / "bad", clean_source=True)
+    assert not (tmp_path / "bad").exists()
