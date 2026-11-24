@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -e . 'faster-whisper==1.2.1' 'transformers==4.57.3' pillow
+      - run: pip install -e . 'faster-whisper==1.2.1' 'transformers==4.57.3' pillow pyarrow
       - run: pip install 'torch==2.8.0' 'torchvision==0.23.0' --index-url https://download.pytorch.org/whl/cpu
       - run: python scripts/public_model_smoke.py
       - uses: actions/upload-artifact@v4
