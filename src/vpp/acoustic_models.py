@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import subprocess
 from itertools import groupby
+from numbers import Real
 from pathlib import Path
 
 from .song_alignment import _hash, _number, _tokens
@@ -37,6 +38,14 @@ def _local_model(model_dir):
     model = AutoModelForCTC.from_pretrained(str(path), local_files_only=True,
                                              use_safetensors=True, trust_remote_code=False).eval()
     return path, extractor, model
+
+
+def native_boundary(value):
+    """Convert real numeric scalars at the model boundary; never shift a timestamp."""
+    if isinstance(value, Real) and not isinstance(value, bool):
+        result = float(value)
+        return result if _number(result) else None
+    return None
 
 
 def ctc_timing_issues(words, duration):
@@ -78,7 +87,7 @@ class LocalGermanCTC:
         words = []
         for item in result.get("chunks", []):
             start, end = item["timestamp"]
-            words.append({"word": item["text"].strip(), "start": start, "end": end})
+            words.append({"word": item["text"].strip(), "start": native_boundary(start), "end": native_boundary(end)})
         duration = len(samples)/16000
         issues = ctc_timing_issues(words, duration)
         return {"backend": "wav2vec2-ctc", "family": "wav2vec2",

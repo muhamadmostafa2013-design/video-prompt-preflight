@@ -44,26 +44,30 @@ def main():
                            "wer": sum(r["word_errors"] for r in rows)/sum(r["reference_words"] for r in rows)}
     except Exception as exc:  # noqa: BLE001 -- report independent stage failures
         errors.append({"stage": "asr", "type": type(exc).__name__, "message": str(exc)[:600]})
-    try:
-        model = snapshot_download("aware-ai/wav2vec2-base-german", allow_patterns=[
-            "config.json", "model.safetensors", "preprocessor_config.json",
-            "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "vocab.json"])
-        ctc = LocalGermanCTC(model)
-        results = []
-        for row in report["audio"]["rows"]:
-            audio = work / f"sample-{row['row_idx']}.wav"
-            evidence = ctc.transcribe(audio)
-            primary = {"backend": "faster-whisper", "family": "whisper", "model": "small",
-                       "audio_sha256": _hash(audio), "words": row["word_timestamps"]}
-            agreement = compare_tracks([primary, evidence], _hash(audio))
-            results.append({"row_idx": row["row_idx"], "prediction": evidence["text"],
-                            **text_wer(row["reference"], evidence["text"]),
-                            "agreement": agreement, "timing_valid": evidence["timing_valid"],
-                            "timing_issues": evidence["timing_issues"], "word_timestamps": evidence["words"]})
-        report["ctc"] = {"rows": results, "wer": sum(r["word_errors"] for r in results) /
-                         sum(r["reference_words"] for r in results)}
-    except Exception as exc:  # noqa: BLE001 -- report independent stage failures
-        errors.append({"stage": "ctc", "type": type(exc).__name__, "message": str(exc)[:600]})
+    for key, repo, revision in [
+            ("ctc", "aware-ai/wav2vec2-base-german", "main"),
+            ("ctc_large", "jonatasgrosman/wav2vec2-large-xlsr-53-german", "refs/pr/2")]:
+        try:
+            model = snapshot_download(repo, revision=revision, allow_patterns=[
+                "config.json", "model.safetensors", "preprocessor_config.json",
+                "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "vocab.json"])
+            ctc = LocalGermanCTC(model)
+            results = []
+            for row in report["audio"]["rows"]:
+                audio = work / f"sample-{row['row_idx']}.wav"
+                evidence = ctc.transcribe(audio)
+                primary = {"backend": "faster-whisper", "family": "whisper", "model": "small",
+                           "audio_sha256": _hash(audio), "words": row["word_timestamps"]}
+                agreement = compare_tracks([primary, evidence], _hash(audio))
+                results.append({"row_idx": row["row_idx"], "prediction": evidence["text"],
+                                **text_wer(row["reference"], evidence["text"]),
+                                "agreement": agreement, "timing_valid": evidence["timing_valid"],
+                                "timing_issues": evidence["timing_issues"], "word_timestamps": evidence["words"]})
+            report[key] = {"model": repo, "rows": results,
+                           "wer": sum(r["word_errors"] for r in results)/sum(r["reference_words"] for r in results)}
+            del ctc
+        except Exception as exc:  # noqa: BLE001 -- report independent stage failures
+            errors.append({"stage": key, "type": type(exc).__name__, "message": str(exc)[:600]})
     try:
         model = snapshot_download("facebook/wav2vec2-lv-60-espeak-cv-ft", revision="refs/pr/4",
                                   allow_patterns=["config.json", "model.safetensors",
