@@ -431,6 +431,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_intelligence_workflow(sub)
     from .acoustic_models import register as register_acoustic_models
     register_acoustic_models(sub)
+    from .project_quality import register as register_project_quality
+    register_project_quality(sub)
 
     return p
 

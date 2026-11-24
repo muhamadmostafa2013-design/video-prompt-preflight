@@ -1,0 +1,13 @@
+{
+  "audio": "media/clean.mp4",
+  "video": "media/clean.mp4",
+  "lyrics": "lyrics/de.txt",
+  "srt": "captions/old.srt",
+  "alignment_run": "evidence/alignment",
+  "ctc_model": "models/german-ctc",
+  "clip_model": "models/clip",
+  "scene_manifest": "scenes.json",
+  "tolerance_ms": 100,
+  "render": false,
+  "clean_source": false
+}

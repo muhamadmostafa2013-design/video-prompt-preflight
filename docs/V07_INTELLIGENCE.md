@@ -24,3 +24,7 @@ Full automatic phoneme recognition, lip-sync detection, character continuity, le
 ## Appearance continuity and dashboard
 
 Optional scene `appearance` object: group, expected, alternatives. Use explicit whole-frame costume, prop and art-style descriptions, not person identity or face matching. CLIP compares these labels independently per sampled frame and flags ambiguous or inconsistent groups. The result remains a review signal. The local report viewer provides summary metrics and expandable evidence without JavaScript or network connections. It is not a model execution web server.
+
+## One-command local project runner
+
+Copy and adapt `examples/quality_project.json` inside your local project directory (all manifest input paths must resolve within that directory). First run align-song using the same exact audio/video; pre-download local models. Then run `vpp quality-run project.json -o review-run`. It records each requested stage separately, refuses missing semantic/consensus evidence, and writes JSON + dashboard. Set render and clean_source true only for a clean source with no baked-in subtitles; missing/failed stages block rendering. The runner never claims publication approval and doesn't invoke provider APIs. Optional preflight, song_spec, cost_spec, whisper_model, phoneme_model/phoneme_audio and independent_tracks inputs are documented by the manifest field names. Some stages can be computationally heavy; this is CLI integration, not a hosted model execution GUI.

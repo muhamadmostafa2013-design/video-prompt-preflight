@@ -278,3 +278,8 @@ There is also a browser-only single-scene review panel in Director's Room.
 A successful deterministic preflight **does not certify** German
 pronunciation, full grammar, learning outcomes or the rendered video.
 See [AI Prompt Director guide](docs/AI_PROMPT_DIRECTOR.md).
+
+
+## Experimental v0.7 quality workflow (development branch)
+
+See [V0.7 intelligence workflow](docs/V07_INTELLIGENCE.md) and [example project manifest](examples/quality_project.json). Use `vpp quality-run project.json -o review-run` after installing local models and completing a source-bound alignment. Multi-family consensus, guarded repair, local semantic/appearance evidence and project dashboard remain review-only. No private media upload or paid calls. Version metadata stays 0.5.4 until an accepted release; do not infer production readiness from this branch.
