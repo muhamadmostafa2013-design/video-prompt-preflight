@@ -37,6 +37,7 @@ def guarded_repair(audio, lyrics, srt, alignment_run, independent_tracks, output
                         tolerance_ms=tolerance_ms)
     result = {"decision": "blocked", "agreement": agreement, "before": before,
               "audio_sha256": source_hash, "srt_sha256": _hash(Path(srt)),
+              "duration_seconds": duration,
               "repair_attempts": 0, "publication_approved": False,
               "human_listening_verified": False}
     draft = None

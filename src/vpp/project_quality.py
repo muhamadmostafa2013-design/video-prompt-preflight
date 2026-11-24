@@ -5,11 +5,13 @@ import json
 from pathlib import Path
 
 from .acoustic_models import LocalGermanCTC, phoneme_evidence
+from .consensus import audiovisual_review
 from .intelligence_planning import cost_plan, education_review
 from .intelligence_workflow import guarded_repair, write_dashboard
 from .model_evidence import asr_evidence, semantic_scan
 from .quality_engine import render_draft, visual_scan
 from .quality_evidence import _read_json
+from .subtitle_sync import parse_srt
 from .triple_review import triple_review
 
 
@@ -93,8 +95,16 @@ def run_project(manifest, output):
     else:
         skip("phonemes", "No phoneme segment/model requested.")
     if "clip_model" in paths and "scene_manifest" in paths:
-        stage("semantics", lambda: semantic_scan(paths["video"], paths["clip_model"],
+        semantic = stage("semantics", lambda: semantic_scan(paths["video"], paths["clip_model"],
                                                 _read_json(paths["scene_manifest"]), spec.get("samples", 3)))
+        if semantic is not None:
+            samples = semantic.get("samples", [])
+            groups = semantic.get("appearance_continuity", {}).get("groups", [])
+            if (not samples or any(s.get("signal") != "supports_expected" for s in samples) or
+                    any(g.get("status") != "sampled_description_consistent" for g in groups)):
+                skip("semantic_gate", "Missing, ambiguous or conflicting sampled descriptions.", blocked=True)
+            else:
+                result["stages"]["semantic_gate"] = {"status": "completed", "evidence": "Sampled descriptions support expectations; manual review remains required."}
     else:
         skip("semantics", "Scene manifest and local CLIP model required.", blocked=True)
     if "song_spec" in paths:
@@ -121,6 +131,15 @@ def run_project(manifest, output):
     else:
         repair = None
         skip("consensus_repair", "No supplementary evidence track.", blocked=True)
+    if repair is not None and repair["decision"] == "review" and "scene_manifest" in paths:
+        def check_av():
+            captions = parse_srt((destination / "caption-review" / "REVIEW_ONLY.srt").read_text(encoding="utf-8"))
+            return audiovisual_review(captions, _read_json(paths["scene_manifest"]), repair["duration_seconds"])
+        av = stage("audiovisual", check_av)
+        if av is None or av["decision"] != "manifest_consistent":
+            result["decision"] = "blocked"
+    else:
+        skip("audiovisual", "Verified draft captions and scene manifest required.", blocked=True)
     if spec.get("render") is True:
         if result["decision"] != "review" or repair is None or spec.get("clean_source") is not True:
             skip("render", "Required checks unresolved or clean-source confirmation missing.", blocked=True)
