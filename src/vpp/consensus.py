@@ -27,7 +27,7 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100, *, duration=None):
     issues = []
     invalid_tracks = []
     known_families = {"whisperx": "whisper", "faster-whisper": "whisper",
-                      "wav2vec2-ctc": "wav2vec2"}
+                      "wav2vec2-ctc": "wav2vec2", "ctc": "wav2vec2"}
     for t in tracks:
         if not isinstance(t, dict):
             raise TypeError("Track must be an object.")
@@ -40,10 +40,17 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100, *, duration=None):
             issues.append("duplicate_model_track")
         ids.add(identifier)
         declared = family.casefold().strip()
-        canonical = known_families.get(identifier[0], declared)
-        if declared != canonical:
-            issues.append("model_family_mismatch")
-        families.add(canonical)
+        canonical = known_families.get(identifier[0])
+        if identifier[0] == "ctc" and declared == "wav2vec":
+            declared = "wav2vec2"
+        if canonical is None:
+            issues.append("unsupported_backend")
+        else:
+            if declared != canonical:
+                issues.append("model_family_mismatch")
+            families.add(canonical)
+        if not identifier[1]:
+            issues.append("missing_model_identifier")
         if t.get("audio_sha256") != source_sha256:
             issues.append("source_hash_mismatch")
         try:
@@ -54,6 +61,8 @@ def compare_tracks(tracks, source_sha256, tolerance_ms=100, *, duration=None):
             if limit is not None and (not _number(limit) or not 0 < limit <= 1800):
                 raise ValueError("Invalid reported source duration.")
             if duration is not None:
+                if limit is not None and abs(limit-duration) > .05:
+                    raise ValueError("Model source duration differs.")
                 limit = min(duration, limit) if limit is not None else duration
             if limit is not None and any(row[2] > limit for row in parsed):
                 raise ValueError("Word interval exceeds source duration.")

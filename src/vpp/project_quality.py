@@ -7,6 +7,7 @@ from pathlib import Path
 from .acoustic_models import LocalGermanCTC, phoneme_evidence
 from .caption_image_qa import scan_caption_images
 from .consensus import audiovisual_review
+from .extended_quality import bilingual_review, pronunciation_review
 from .intelligence_planning import cost_plan, education_review
 from .intelligence_workflow import guarded_repair, write_dashboard
 from .model_evidence import asr_evidence, semantic_scan
@@ -35,7 +36,8 @@ def run_project(manifest, output):
     paths = {key: _local_path(root, spec[key]) for key in
              ("audio", "video", "lyrics", "srt", "alignment_run")}
     for key in ("ctc_model", "whisper_model", "clip_model", "phoneme_model", "phoneme_audio",
-                "scene_manifest", "song_spec", "cost_spec", "prompt"):
+                "scene_manifest", "song_spec", "cost_spec", "prompt",
+                "phoneme_reference", "bilingual_reference"):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
     for key in ("render", "clean_source", "burn", "caption_image_qa"):
@@ -96,7 +98,14 @@ def run_project(manifest, output):
     else:
         skip("ctc", "No local CTC model requested.")
     if "phoneme_model" in paths and "phoneme_audio" in paths:
-        stage("phonemes", lambda: phoneme_evidence(paths["phoneme_audio"], paths["phoneme_model"]))
+        phone = stage("phonemes", lambda: phoneme_evidence(paths["phoneme_audio"], paths["phoneme_model"]))
+        if "phoneme_reference" in paths and phone is not None:
+            reviewed = stage("pronunciation", lambda: pronunciation_review(
+                _read_json(paths["phoneme_reference"]), phone))
+            if reviewed is None or reviewed["decision"] != "phone_sequence_consistent":
+                result["decision"] = "blocked"
+        else:
+            skip("pronunciation", "Teacher-approved phone reference is required for comparison.")
     elif "phoneme_model" in paths or "phoneme_audio" in paths:
         skip("phonemes", "Both a short segment and local phoneme model are required.", blocked=True)
     else:
@@ -147,6 +156,17 @@ def run_project(manifest, output):
             result["decision"] = "blocked"
     else:
         skip("audiovisual", "Verified draft captions and scene manifest required.", blocked=True)
+    if "bilingual_reference" in paths:
+        captions_path = paths["srt"]
+        if repair is not None and repair["decision"] == "review":
+            captions_path = destination / "caption-review" / "REVIEW_ONLY.srt"
+        bilingual = stage("bilingual", lambda: bilingual_review(
+            parse_srt(captions_path.read_text(encoding="utf-8-sig")),
+            _read_json(paths["bilingual_reference"])))
+        if bilingual is None or bilingual["decision"] != "reference_consistent":
+            result["decision"] = "blocked"
+    else:
+        skip("bilingual", "No teacher-approved bilingual reference provided.")
     if spec.get("caption_image_qa") is True:
         clean = stage("clean_caption_ocr", lambda: scan_caption_images(
             paths["video"], paths["srt"], mode="clean",

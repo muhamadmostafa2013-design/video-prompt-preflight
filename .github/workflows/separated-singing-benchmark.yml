@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install 'torch==2.8.0' 'torchaudio==2.8.0' --index-url https://download.pytorch.org/whl/cpu
-      - run: pip install -e . 'demucs==4.0.1' 'whisperx==3.7.4' 'transformers==4.57.3'
+      - run: pip install -e . 'demucs==4.0.1' 'whisperx==3.7.4' 'transformers==4.57.3' 'faster-whisper==1.2.1' 'ctranslate2==4.9.1'
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: python scripts/separated_singing_benchmark.py
       - uses: actions/upload-artifact@v4

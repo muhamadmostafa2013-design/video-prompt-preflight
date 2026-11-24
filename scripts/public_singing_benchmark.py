@@ -12,6 +12,7 @@ from pathlib import Path
 
 from faster_whisper.utils import download_model
 
+from vpp.extended_quality import word_fingerprint
 from vpp.model_evidence import asr_evidence
 from vpp.singing_benchmark import onset_benchmark
 from vpp.song_alignment import _hash, _tokens
@@ -34,6 +35,9 @@ def download(relative, target):
 def main():
     root = Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "vpp-singing"
     root.mkdir(exist_ok=True)
+    scope = os.environ.get("VPP_BENCHMARK_SCOPE", "first_minute")
+    if scope not in ("first_minute", "full"):
+        raise ValueError("Unknown benchmark scope.")
     model = download_model("small")
     results = []
     errors = []
@@ -51,29 +55,40 @@ def main():
                 times = list(csv.DictReader(handle))
             if len(lines) != len(times):
                 raise ValueError("Reference word/onset counts differ.")
-            # Evaluate the complete first 60 seconds for all three tracks. Use
-            # a fixed cutoff chosen before inference, not a good-performing excerpt.
+            # Fixed scope selected before inference; no reference-informed cropping.
             reference = [{"word": word, "start": float(row["word_start"])}
                          for word, row in zip(lines, times)
-                         if 0 <= float(row["word_start"]) < 60]
+                         if scope == "full" or 0 <= float(row["word_start"]) < 60]
             # Normalize exactly one token per manual onset; no extrapolated ends.
             if any(len(_tokens(row["word"])) != 1 for row in reference):
                 raise ValueError("Unexpected reference tokenization.")
             clip = root / f"{index}.wav"
-            subprocess.run(["ffmpeg", "-v", "error", "-i", str(audio), "-t", "60",
-                            "-ac", "1", "-ar", "16000", str(clip)],
-                           check=True, timeout=60)
+            probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                                    "-of", "default=nw=1:nk=1", str(audio)],
+                                   capture_output=True, text=True, check=True, timeout=30)
+            duration = float(probe.stdout)
+            if scope == "full" and not 0 < duration <= 300:
+                raise ValueError("Full-track benchmark supports up to 300 seconds; no silent truncation.")
+            cutoff = ["-t", "60"] if scope == "first_minute" else []
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(audio), *cutoff,
+                            "-ac", "1", "-ar", "16000", str(clip)], check=True, timeout=90)
             evidence = asr_evidence(clip, model)
+            repeated = asr_evidence(clip, model)
+            fingerprints = [word_fingerprint(x["words"]) for x in (evidence, repeated)]
             report = onset_benchmark(reference, evidence["words"], evidence["source_duration_seconds"])
             results.append({"track": track, "source_sha256": _hash(audio),
                             "clip_sha256": _hash(clip), "manual_onsets_sha256": _hash(labels),
                             "manual_words_sha256": _hash(words),
-                            "model_timing_valid": evidence["timing_valid"], **report})
+                            "model_timing_valid": evidence["timing_valid"],
+                            "duration_seconds": evidence["source_duration_seconds"],
+                            "provenance": evidence["provenance"], "repeat_fingerprints": fingerprints,
+                            "repeat_stable": fingerprints[0] == fingerprints[1], **report})
         except Exception as exc:  # noqa: BLE001 -- each benchmark case is recorded
             errors.append({"track": track, "error_type": type(exc).__name__, "message": str(exc)[:300]})
     total = sum(r["reference_words"] for r in results)
     result = {"dataset": "JamendoLyrics MultiLang, archived GitHub revision " + REV,
-              "model": Path(model).name, "sample": "three preselected German songs, first 60s each",
+              "model": Path(model).name, "sample": scope, "repeats_per_track": 2,
+              "all_repeats_stable": len(results) == len(TRACKS) and all(r["repeat_stable"] for r in results),
               "rows": results, "errors": errors,
               "reference_words": total, "publication_approved": False}
     if total:
@@ -83,7 +98,7 @@ def main():
     Path("singing-benchmark-report.json").write_text(json.dumps(result, ensure_ascii=False,
         indent=2, allow_nan=False), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-    return bool(errors) or len(results) != len(TRACKS)
+    return bool(errors) or not result["all_repeats_stable"]
 
 
 if __name__ == "__main__":

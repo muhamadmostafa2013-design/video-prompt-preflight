@@ -11,6 +11,7 @@ from faster_whisper.utils import download_model
 from public_singing_benchmark import TRACKS, download
 
 from vpp.acoustic_models import native_boundary
+from vpp.extended_quality import whisper_options
 from vpp.model_evidence import asr_evidence
 from vpp.singing_benchmark import PAIRED_METHODS, onset_benchmark, paired_summary
 
@@ -21,7 +22,8 @@ def main():
     root = Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "vpp-separated"
     root.mkdir(exist_ok=True)
     model_dir = download_model("small")
-    asr = WhisperModel(model_dir, device="cpu", compute_type="int8", local_files_only=True)
+    asr = WhisperModel(model_dir, device="cpu", compute_type="int8", local_files_only=True,
+                       cpu_threads=2, num_workers=1)
     align_model, metadata = whisperx.load_align_model(language_code="de", device="cpu")
     rows, errors = [], []
     for index, track in enumerate(TRACKS):
@@ -53,8 +55,7 @@ def main():
             row["demucs_whisper"] = onset_benchmark(ref, separated["words"], 60)
             # Alignment uses only recognized segment text and bounds, never manual onsets.
             audio = whisperx.load_audio(str(vocal))
-            segments, _ = asr.transcribe(audio, language="de", beam_size=5,
-                                         condition_on_previous_text=False)
+            segments, _ = asr.transcribe(audio, **whisper_options())
             segments = [{"start": float(s.start), "end": float(s.end), "text": s.text}
                         for s in segments]
             aligned = whisperx.align(segments, align_model, metadata, audio, "cpu",

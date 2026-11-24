@@ -15,16 +15,18 @@ def asr_evidence(audio, model_dir):
     from faster_whisper import WhisperModel
 
     from .acoustic_models import _audio, ctc_timing_issues, native_boundary
+    from .extended_quality import model_provenance, whisper_options
 
     audio = Path(audio).resolve(strict=True)
     model_dir = Path(model_dir).resolve(strict=True)
     if not model_dir.is_dir():
         raise ValueError("A downloaded local model directory is required.")
-    model = WhisperModel(str(model_dir), device="cpu", compute_type="int8", local_files_only=True)
+    provenance = model_provenance(model_dir)
+    model = WhisperModel(str(model_dir), device="cpu", compute_type="int8", local_files_only=True,
+                         cpu_threads=2, num_workers=1)
     samples = _audio(audio, 300)
     duration = len(samples)/16000
-    segments, info = model.transcribe(samples, language="de", word_timestamps=True,
-                                      beam_size=5, condition_on_previous_text=False)
+    segments, info = model.transcribe(samples, **whisper_options())
     words = []
     for segment in segments:
         for word in segment.words or []:
@@ -34,6 +36,7 @@ def asr_evidence(audio, model_dir):
     return {"audio_sha256": _hash(audio), "words": words, "language": info.language,
             "source_duration_seconds": duration, "timing_valid": not issues, "timing_issues": issues,
             "model": model_dir.name, "backend": "faster-whisper", "family": "whisper",
+            "provenance": provenance,
             "publication_approved": False,
             "limitations": "ASR timestamps are not forced-alignment scores or human labels."}
 
@@ -142,12 +145,14 @@ def semantic_scan(video, model_dir, scenes, samples=3):
                     not appearance["group"].strip() or not isinstance(appearance.get("expected"), str) or
                     not isinstance(appearance.get("alternatives"), list)):
                 raise ValueError("Appearance requires group, expected description and alternatives.")
+    from .extended_quality import scene_schedule
+
+    schedule = scene_schedule(scenes, duration, minimum=samples)
     model = LocalCLIP(model_dir)
     rows = []
-    for scene in scenes:
+    for scene, points in zip(scenes, schedule):
         labels = [scene["expected"], *scene["alternatives"]]
-        for i in range(samples):
-            at = scene["start"] + (scene["end"] - scene["start"]) * (i+.5)/samples
+        for at in points:
             frame = subprocess.run(["ffmpeg", "-v", "error", "-protocol_whitelist", "file,pipe",
                                     "-ss", f"{at:.3f}", "-i", str(path), "-frames:v", "1",
                                     "-vf", "scale=512:-2", "-f", "image2pipe", "-vcodec", "png", "-"],
@@ -161,6 +166,7 @@ def semantic_scan(video, model_dir, scenes, samples=3):
                 rows.append(row)
     return {"decision": "review", "model": model.model_name, "video_sha256": _hash(path),
             "samples": rows, "appearance_continuity": continuity_signals(rows), "publication_approved": False,
+            "sampling_max_step_seconds": 5, "planned_samples": sum(map(len, schedule)),
             "limitations": "Relative CLIP similarity only; cannot prove scene meaning, absence, person identity, continuity or correctness between samples."}
 
 
