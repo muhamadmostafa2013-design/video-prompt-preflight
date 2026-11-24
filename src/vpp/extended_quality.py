@@ -132,3 +132,41 @@ def pronunciation_review(reference, evidence):
             "suspected_edits": edits, "publication_approved": False,
             "human_listening_verified": False,
             "limitations": "Model phone candidates, not certified pronunciation; teacher listening required."}
+
+
+
+def chunk_schedule(total_samples, rate=16000, core_seconds=30, context_seconds=5):
+    """Nonoverlapping ownership intervals, overlapping inference context."""
+    if type(total_samples) is not int or type(rate) is not int or not 1 <= rate <= 192000:
+        raise ValueError("Invalid sample count or rate.")
+    if not 0 < total_samples <= 300*rate:
+        raise ValueError("Chunked experiment supports 0..300 seconds.")
+    if (type(core_seconds) is not int or not 10 <= core_seconds <= 60 or
+            type(context_seconds) is not int or not 0 <= context_seconds <= 10):
+        raise ValueError("Invalid chunk configuration.")
+    core, context = core_seconds*rate, context_seconds*rate
+    return [{"core_start": start, "core_end": min(total_samples, start+core),
+             "decode_start": max(0, start-context),
+             "decode_end": min(total_samples, start+core+context)}
+            for start in range(0, total_samples, core)]
+
+
+def own_chunk_words(words, chunk, rate=16000):
+    """Retain onset-owned words on the original timeline; no invented timestamps."""
+    owned = []
+    rejected = 0
+    length = (chunk["decode_end"]-chunk["decode_start"])/rate
+    for row in words:
+        start = row.get("start")
+        if not _number(start) or not 0 <= start < length:
+            rejected += 1
+            continue
+        absolute = round(start+chunk["decode_start"]/rate, 6)
+        if not chunk["core_start"]/rate <= absolute < chunk["core_end"]/rate:
+            continue
+        result = dict(row)
+        result["start"] = absolute
+        end = row.get("end")
+        result["end"] = round(end+chunk["decode_start"]/rate, 6) if _number(end) else None
+        owned.append(result)
+    return owned, rejected

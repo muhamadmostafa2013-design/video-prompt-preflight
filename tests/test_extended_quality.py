@@ -67,3 +67,28 @@ def test_unknown_model_cannot_create_independent_consensus():
     report = compare_tracks([a, b], "a"*64)
     assert report["decision"] == "blocked"
     assert "unsupported_backend" in report["issues"]
+
+
+
+def test_chunk_schedule_exact_ownership_and_context():
+    from vpp.extended_quality import chunk_schedule
+
+    chunks = chunk_schedule(65*16000)
+    assert [(c["core_start"]//16000, c["core_end"]//16000) for c in chunks] == [
+        (0, 30), (30, 60), (60, 65)]
+    assert chunks[1]["decode_start"] == 25*16000
+    assert chunks[1]["decode_end"] == 65*16000
+
+
+def test_chunk_merge_never_shifts_or_duplicates_context_words():
+    from vpp.extended_quality import chunk_schedule, own_chunk_words
+
+    a, b = chunk_schedule(60*16000)
+    first, invalid = own_chunk_words([{"word": "ein", "start": 29, "end": 29.5},
+                                      {"word": "Haus", "start": 30, "end": 30.5}], a)
+    second, other = own_chunk_words([{"word": "ein", "start": 4, "end": 4.5},
+                                     {"word": "Haus", "start": 5, "end": 5.5},
+                                     {"word": "unknown", "start": None}], b)
+    assert [w["word"] for w in first+second] == ["ein", "Haus"]
+    assert [w["start"] for w in first+second] == [29, 30]
+    assert invalid == 0 and other == 1

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scope: [first_minute, full]
+        scope: [first_minute, full, full_chunked]
     env:
       HF_HUB_DISABLE_TELEMETRY: '1'
       OMP_NUM_THREADS: '2'
