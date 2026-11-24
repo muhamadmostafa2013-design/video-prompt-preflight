@@ -89,3 +89,22 @@ def test_semantic_disagreement_blocks_render(tmp_path, monkeypatch):
     result = project.run_project(manifest, tmp_path / "out")
     assert result["stages"]["semantic_gate"]["status"] == "blocked"
     assert result["stages"]["render"]["status"] == "blocked"
+
+
+
+def test_strict_education_missing_reference_rejected_before_models(tmp_path):
+    _, manifest, spec = fixture(tmp_path)
+    spec["strict_educational_qa"] = True
+    manifest.write_text(json.dumps(spec))
+    with pytest.raises(ValueError, match="Strict educational QA missing inputs"):
+        project.run_project(manifest, tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_orphan_phone_reference_rejected(tmp_path):
+    root, manifest, spec = fixture(tmp_path)
+    (root / "phones.json").write_text("{}")
+    spec["phoneme_reference"] = "phones.json"
+    manifest.write_text(json.dumps(spec))
+    with pytest.raises(ValueError, match="Phone reference requires"):
+        project.run_project(manifest, tmp_path / "out")

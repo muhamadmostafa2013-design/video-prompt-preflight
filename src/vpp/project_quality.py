@@ -40,9 +40,20 @@ def run_project(manifest, output):
                 "phoneme_reference", "bilingual_reference"):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
-    for key in ("render", "clean_source", "burn", "caption_image_qa"):
+    for key in ("render", "clean_source", "burn", "caption_image_qa", "strict_educational_qa"):
         if key in spec and type(spec[key]) is not bool:
             raise ValueError(f"{key} must be a JSON boolean.")
+    strict = spec.get("strict_educational_qa") is True
+    if strict:
+        required = {"scene_manifest", "clip_model", "song_spec", "phoneme_model",
+                    "phoneme_audio", "phoneme_reference", "bilingual_reference"}
+        missing = sorted(required - paths.keys())
+        if missing:
+            raise ValueError("Strict educational QA missing inputs: " + ", ".join(missing))
+        if spec.get("caption_image_qa") is not True or spec.get("caption_language") != "deu+eng+ara":
+            raise ValueError("Strict educational QA requires German and Arabic caption OCR.")
+    if "phoneme_reference" in paths and not {"phoneme_audio", "phoneme_model"} <= paths.keys():
+        raise ValueError("Phone reference requires both local audio segment and model.")
     if not isinstance(spec.get("independent_tracks", []), list):
         raise TypeError("independent_tracks must be a list.")
     track_paths = [_local_path(root, p) for p in spec.get("independent_tracks", [])]
@@ -50,7 +61,8 @@ def run_project(manifest, output):
         raise ValueError("At most four supplementary tracks.")
     destination = Path(output).resolve()
     destination.mkdir(parents=True, exist_ok=False)
-    result = {"decision": "review", "stages": {}, "publication_approved": False,
+    result = {"decision": "review", "stages": {}, "strict_educational_qa": strict,
+              "publication_approved": False,
               "human_listening_verified": False, "remote_calls": 0}
 
     def stage(name, fn):
@@ -105,7 +117,8 @@ def run_project(manifest, output):
             if reviewed is None or reviewed["decision"] != "phone_sequence_consistent":
                 result["decision"] = "blocked"
         else:
-            skip("pronunciation", "Teacher-approved phone reference is required for comparison.")
+            skip("pronunciation", "Teacher-approved phone reference is required for comparison.",
+                 blocked=strict)
     elif "phoneme_model" in paths or "phoneme_audio" in paths:
         skip("phonemes", "Both a short segment and local phoneme model are required.", blocked=True)
     else:
@@ -169,7 +182,7 @@ def run_project(manifest, output):
         skip("bilingual", "No teacher-approved bilingual reference provided.")
     if spec.get("caption_image_qa") is True:
         clean = stage("clean_caption_ocr", lambda: scan_caption_images(
-            paths["video"], paths["srt"], mode="clean",
+            paths["video"], mode="clean",
             panel=spec.get("caption_panel", (0., .70, 1., 1.)),
             inspection=spec.get("caption_inspection"), language=spec.get("caption_language", "deu+eng"),
             max_samples=spec.get("caption_max_samples", 180)))

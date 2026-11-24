@@ -94,6 +94,38 @@ def _ocr(image, language, min_confidence):
     return " ".join(accepted), rejected
 
 
+def caption_sample_points(captions, duration, samples_per_cue=3, max_step=2.0, *, bilingual=False):
+    """Sample long cues and gaps at bounded intervals instead of only their midpoint."""
+    if not _number(duration) or not 0 < duration <= 1800:
+        raise ValueError("Unsupported duration.")
+    if type(samples_per_cue) is not int or not 1 <= samples_per_cue <= 5:
+        raise ValueError("Use 1..5 samples per cue.")
+    if not _number(max_step) or not .5 <= max_step <= 5:
+        raise ValueError("Invalid sampling interval.")
+    points = []
+
+    def add(start, end, text, minimum=1):
+        if end <= start:
+            return
+        count = max(minimum, math.ceil((end-start)/max_step))
+        points.extend((start+(end-start)*(i+.5)/count, text) for i in range(count))
+
+    cursor = 0.
+    for cue in captions:
+        start, end = cue["start_ms"]/1000, cue["end_ms"]/1000
+        if start < cursor or end > duration+.001:
+            raise ValueError("Caption overlaps or exceeds video duration.")
+        end = min(end, duration)
+        if start-cursor > .15:
+            add(cursor, start, "")
+        expected = " ".join(cue["lines"]) if bilingual else cue["lines"][0]
+        add(start, end, expected, samples_per_cue)
+        cursor = end
+    if duration-cursor > .15 or not captions:
+        add(cursor, duration, "")
+    return points
+
+
 def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
                         panel=(0., .70, 1., 1.), language="deu+eng",
                         max_samples=180, min_confidence=40, samples_per_cue=3,
@@ -133,24 +165,8 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
     if mode == "rendered" and srt is None:
         raise ValueError("Expected SRT required for rendered caption check.")
     captions = parse_srt(Path(srt).read_text(encoding="utf-8-sig")) if srt else []
-    points = []
-    cursor = 0.
-    for cue in captions:
-        start, end = cue["start_ms"]/1000, cue["end_ms"]/1000
-        if start < cursor or end > duration+.001:
-            raise ValueError("Caption overlaps or exceeds video duration.")
-        if start-cursor > .15:
-            points.append(((start+cursor)/2, ""))
-        for i in range(samples_per_cue):
-            at = start+(end-start)*(i+.5)/samples_per_cue
-            expected = " ".join(cue["lines"]) if "ara" in language else cue["lines"][0]
-            points.append((at, expected if mode == "rendered" else ""))
-        cursor = end
-    if duration-cursor > .15 and captions:
-        points.append(((duration+cursor)/2, ""))
-    if not captions:
-        points = [(min(i+.5, duration/2 if duration < 1 else duration-.001), "")
-                  for i in range(math.ceil(duration))]
+    points = caption_sample_points(captions if mode == "rendered" else [], duration,
+                                   samples_per_cue, bilingual="ara" in language)
     if not points or len(points) > max_samples:
         raise ValueError("Sample limit exceeded; split the review or increase explicit limit.")
     bounds = (round(x0*width), round(y0*height), round(x1*width), round(y1*height))
@@ -190,7 +206,8 @@ def scan_caption_images(video, srt=None, *, targets=None, mode="rendered",
                      "observed_regions": observed, **row})
     return {"decision": "needs_review" if any(r["issues"] for r in rows) else "sample_consistent",
             "video_sha256": _hash(path), "mode": mode, "language": language,
-            "samples": len(rows), "rows": rows, "publication_approved": False,
+            "samples": len(rows), "rows": rows, "sampling_max_step_seconds": 2,
+            "publication_approved": False,
             "limitations": "Sampled OCR of declared lower panel and adjacent strips; not full-frame/all-frame text absence. Arabic not checked unless selected."}
 
 

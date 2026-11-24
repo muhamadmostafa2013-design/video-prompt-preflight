@@ -82,3 +82,25 @@ def test_german_caption_capitalization_is_not_ignored(expected, observed):
 
 def test_unicode_canonical_equivalence_not_a_capitalization_error():
     assert caption_observation("Ich höre Musik", "Ich ho\u0308re Musik")["decision"] == "sample_consistent"
+
+
+
+def test_caption_sampling_long_gaps_and_cues():
+    from vpp.caption_image_qa import caption_sample_points
+
+    cues = [{"start_ms": 10000, "end_ms": 30000, "lines": ["Ein Nomen", "اسم"]}]
+    points = caption_sample_points(cues, 40, bilingual=True)
+    assert len(points) == 20
+    assert points[0] == (1.0, "")
+    assert points[-1] == (39.0, "")
+    assert sum(text == "Ein Nomen اسم" for _, text in points) == 10
+    assert max(b[0]-a[0] for a, b in zip(points, points[1:])) <= 2
+
+
+def test_clean_source_sampling_does_not_depend_on_old_caption_timing():
+    from vpp.caption_image_qa import caption_sample_points
+
+    points = caption_sample_points([], 61)
+    assert len(points) == 31
+    assert all(text == "" for _, text in points)
+    assert points[-1][0] > 60

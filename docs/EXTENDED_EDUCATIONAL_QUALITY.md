@@ -8,3 +8,6 @@
 - Semantic scan requires a covered scene timeline and samples long scenes at intervals of at most five seconds, with a bounded 600-frame budget. CLIP similarity cannot prove scene content or all-frame continuity.
 
 All stages remain review-only. No private media upload, paid APIs, publication approval or claim of independent human listening.
+
+## Strict educational review profile
+Set `strict_educational_qa: true` to require local semantic, curriculum, phoneme and bilingual references plus German/Arabic sampled OCR before rendering a review draft. Explicit phoneme references cannot be ignored when their model or audio is absent. Clean-source OCR samples the source timeline independently of old subtitle timing; rendered captions and gaps now receive bounded two-second sampling. Large sample jobs must be split or explicitly increase the cap. This profile still never approves publication or proves that the short phoneme clip represents every word in a song.
