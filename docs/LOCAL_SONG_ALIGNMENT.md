@@ -55,3 +55,14 @@ report may include personal data; keep them local.
 Regression fixtures deliberately inject unequal late and early cues,
 overlaps, missing repetitions, incorrect German, corrupt timestamps and
 modified source files. These validate the algorithm, not real-song accuracy.
+
+
+## v0.6 quality-engine experimental milestone
+
+- `vpp model-readiness`: inspect local binaries/packages, never switch to paid services.
+- `vpp quality-simulate --seed 20261124 --trials 600`: reproducible known-answer tests with six fault types. CI runs three seeds (1,800 trials).
+- `vpp caption-language-qa old.srt --glossary glossary.json`: DE/AR script and explicit lexical glossary hints, not semantic translation/grammar grading.
+- `vpp visual-scan clean.mp4`: full decoder pass, one-second visual samples, dark/change/still hints. Not identity or scene matching.
+- `vpp repair-video clean.mp4 --audio clean.mp4 --lyrics exact-sung-de.txt --srt old.srt --alignment-run alignment-run -o review-output --clean-source`: recompute repair from source-bound evidence, mux selectable subtitles, re-extract and compare SRT, preserve exact audio/video packet hashes and timestamps. Add `--burn` to create an experimental libass rendered draft (visual verification required; video re-encoded). Use a clean source without baked captions. Align the exact same media first; different decoded audio or timeline blocks repair.
+
+No publication approval is generated; exit 3 = review. Actual media mux tests use a synthetic tone, not real singing. The synthetic fault corpus encodes error types without private recordings. Real acoustic benchmarks, human annotated ground truth, learned visual identity/scene matching, contextual grammar and translation assessment remain unvalidated. The new CLI is not a browser feature. `--burn` requires manual glyph/RTL/safe-area QA.

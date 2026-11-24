@@ -421,6 +421,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_song_alignment(sub)
     from .subtitle_sync import register as register_subtitle_sync
     register_subtitle_sync(sub)
+    from .quality_engine import register as register_quality_engine
+    register_quality_engine(sub)
 
     return p
 

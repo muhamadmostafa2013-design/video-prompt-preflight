@@ -6,7 +6,6 @@ import pytest
 from vpp.song_alignment import _hash
 from vpp.subtitle_sync import audit_sync, parse_srt, repair_srt, run_sync
 
-
 LYRICS = ["Ein Nomen, ein Verb!", "Ein Nomen, ein Verb!"]
 WORDS = [
     {"word": word, "start": start, "end": end, "score": .9}
