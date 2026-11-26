@@ -113,10 +113,19 @@ def test_gate_09_real_local_ocr_is_advisory(real_video, tmp_path, monkeypatch):
     image_path = tmp_path / "readable.png"
     image = Image.new("RGB", (900, 180), color="white")
     draw = ImageDraw.Draw(image)
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    if not Path(font_path).exists():
-        pytest.fail("Ubuntu release runner must provide DejaVuSans.ttf.")
-    font = ImageFont.truetype(font_path, 82)
+    # FreeType searches platform font directories for these names, so the
+    # fixture does not depend on one distribution's font install path.
+    for font_name in ("DejaVuSans.ttf", "arial.ttf", "Arial.ttf"):
+        try:
+            font = ImageFont.truetype(font_name, 82)
+            break
+        except OSError:
+            continue
+    else:
+        try:
+            font = ImageFont.load_default(size=82)
+        except (OSError, TypeError):
+            pytest.fail("OCR fixture needs DejaVu Sans, Arial, or Pillow's scalable default font.")
     draw.text((18, 40), "HELLO VIDEO", fill="black", font=font)
     image.save(image_path)
 
