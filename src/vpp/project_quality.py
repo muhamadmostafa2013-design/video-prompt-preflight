@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .acoustic_models import LocalGermanCTC, phoneme_evidence
+from .acoustic_review import review_evidence
 from .caption_image_qa import scan_caption_images
 from .consensus import audiovisual_review
 from .extended_quality import bilingual_review, pronunciation_review
@@ -40,9 +41,14 @@ def run_project(manifest, output):
                 "phoneme_reference", "bilingual_reference"):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
-    for key in ("render", "clean_source", "burn", "caption_image_qa", "strict_educational_qa"):
+    for key in ("render", "clean_source", "burn", "caption_image_qa", "strict_educational_qa",
+                "acoustic_drift_review"):
         if key in spec and type(spec[key]) is not bool:
             raise ValueError(f"{key} must be a JSON boolean.")
+    drift_requested = spec.get("acoustic_drift_review") is True
+    drift_tolerance = spec.get("acoustic_drift_tolerance_ms", 150)
+    if type(drift_tolerance) is not int or not 0 <= drift_tolerance <= 5000:
+        raise ValueError("acoustic_drift_tolerance_ms must be an integer in 0..5000.")
     strict = spec.get("strict_educational_qa") is True
     if strict:
         required = {"scene_manifest", "clip_model", "song_spec", "phoneme_model",
@@ -109,6 +115,20 @@ def run_project(manifest, output):
             tracks.append(value)
     else:
         skip("ctc", "No local CTC model requested.")
+    if drift_requested:
+        if not tracks:
+            skip("acoustic_drift", "No supplementary acoustic evidence available.", blocked=True)
+        else:
+            def audit_track(track):
+                report = review_evidence(paths["audio"], paths["srt"], track, drift_tolerance)
+                return {**report, "backend": track.get("backend"), "family": track.get("family"),
+                        "model": track.get("model")}
+            for index, track in enumerate(tracks, 1):
+                reviewed = stage(f"acoustic_drift_{index}", lambda track=track: audit_track(track))
+                if reviewed is None or reviewed["decision"] != "review_only":
+                    result["decision"] = "blocked"
+    else:
+        skip("acoustic_drift", "Optional per-track caption drift diagnostic not requested.")
     if "phoneme_model" in paths and "phoneme_audio" in paths:
         phone = stage("phonemes", lambda: phoneme_evidence(paths["phoneme_audio"], paths["phoneme_model"]))
         if "phoneme_reference" in paths and phone is not None:
