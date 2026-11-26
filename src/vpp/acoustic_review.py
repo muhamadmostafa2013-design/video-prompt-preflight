@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 from array import array
+from itertools import pairwise
 from pathlib import Path
 
 from .acoustic_models import native_boundary
@@ -83,7 +84,7 @@ def cue_drift(captions, rows, duration, tolerance_ms=150):
             entry["status"] = "screen_out_of_range"
         elif not group or any(r["status"] != "candidate_match" for r in group):
             entry["status"] = "incomplete_acoustic_evidence"
-        elif any(b["raw_index"] != a["raw_index"] + 1 for a, b in zip(group, group[1:])):
+        elif any(b["raw_index"] != a["raw_index"] + 1 for a, b in pairwise(group)):
             entry["status"] = "noncontiguous_acoustic_evidence"
         else:
             acoustic_start = round(group[0]["start"] * 1000)
