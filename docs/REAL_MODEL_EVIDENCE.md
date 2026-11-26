@@ -1,0 +1,7 @@
+# Real-model evidence (experimental)
+
+`vpp asr-evidence song.mp3 --model-dir /local/faster-whisper-small` runs actual CPU ASR with word timestamps. The output is independent ASR evidence, **not WhisperX forced alignment**, and is never automatically consumed as alignment approval.
+
+`vpp semantic-scan clean.mp4 --model-dir /local/clip-vit-base-patch32 --scenes scenes.json --samples 3` compares expected scene descriptions against alternatives using CLIP. Scene JSON is a list of objects with id, start/end (seconds), expected (English description), alternatives (list of English descriptions). Relative cosine scores and margins are advisory; do not use for personal identity or absence certification. Only sampled frames are examined. Install optional dependencies (faster-whisper, torch, transformers, pillow) and download weights explicitly. The CLI uses local paths only.
+
+The dedicated public-model-smoke workflow downloads public weights and three public FLEURS German read-speech test clips, calculates WER against their supplied transcript and compares a public parrot image against alternatives. This is a smoke test, not a song benchmark. It does not download or upload user recordings, or contain independent human word-boundary annotations. Check actual workflow logs/artifacts before claiming success. For independent boundary accuracy, use benchmark-alignment with a separately listened and annotated recording (see LOCAL_SONG_ALIGNMENT.md). Do not pass the ASR probability as a WhisperX score. No auto-publication.

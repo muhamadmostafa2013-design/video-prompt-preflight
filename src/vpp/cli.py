@@ -417,6 +417,29 @@ def build_parser() -> argparse.ArgumentParser:
     director.add_argument("--prompt-out", help="Write final generator prompts only if ready")
     director.set_defaults(func=cmd_director_review)
 
+    from .song_alignment import register as register_song_alignment
+    register_song_alignment(sub)
+    from .subtitle_sync import register as register_subtitle_sync
+    register_subtitle_sync(sub)
+    from .quality_engine import register as register_quality_engine
+    register_quality_engine(sub)
+    from .quality_evidence import register as register_quality_evidence
+    register_quality_evidence(sub)
+    from .model_evidence import register as register_model_evidence
+    register_model_evidence(sub)
+    from .intelligence_workflow import register as register_intelligence_workflow
+    register_intelligence_workflow(sub)
+    from .acoustic_models import register as register_acoustic_models
+    register_acoustic_models(sub)
+    from .project_quality import register as register_project_quality
+    register_project_quality(sub)
+    from .integration_audit import register as register_integration_audit
+    register_integration_audit(sub)
+    from .caption_image_qa import register as register_caption_image_qa
+    register_caption_image_qa(sub)
+    from .acoustic_review import register as register_acoustic_review
+    register_acoustic_review(sub)
+
     return p
 
 

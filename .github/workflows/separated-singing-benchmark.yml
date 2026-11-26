@@ -1,0 +1,31 @@
+name: separated-singing-benchmark
+on:
+  push:
+    branches: ['feature/local-song-word-alignment']
+    paths: ['scripts/separated_singing_benchmark.py', '.github/workflows/separated-singing-benchmark.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  singing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install 'torch==2.8.0' 'torchaudio==2.8.0' --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e . 'demucs==4.0.1' 'whisperx==3.7.4' 'transformers==4.57.3' 'faster-whisper==1.2.1' 'ctranslate2==4.9.1'
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: python scripts/separated_singing_benchmark.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: separated-singing-report
+          path: separated-singing-report.json
+          if-no-files-found: warn
