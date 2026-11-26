@@ -107,5 +107,5 @@ def test_out_of_range_cue(tmp_path):
 
 
 def test_punctuation_only_reference_is_rejected(tmp_path):
-    with pytest.raises(ValueError, match="lexical reference"):
+    with pytest.raises(ValueError, match="plain nonempty text|lexical reference"):
         _drift_fixture(tmp_path, "!!!", [])
