@@ -169,3 +169,45 @@ def test_consensus_invalid_ctc_timing_blocks_with_diagnostics():
     assert not report["publication_approved"]
     b = track("faster-whisper", "unrelated")
     assert "model_family_mismatch" in compare_tracks([a, b], HASH)["issues"]
+
+
+def test_dashboard_displays_per_model_drift_without_fabricating_missing_values(tmp_path):
+    path = tmp_path / "report.html"
+    evidence = {"backend": "<script>model</script>", "model": "fixture",
+                "cue_drift_summary": {"measured_cues": 1, "unmeasured_cues": 1,
+                                      "drift_candidates": 1, "boundary_max_ms": 300},
+                "cue_drift": [
+                    {"cue": 1, "text": "Ein <img src=x onerror=alert(1)> Haus",
+                     "onset_error_ms": 300, "offset_error_ms": -200, "status": "drift_candidate"},
+                    {"cue": 2, "text": "ein Verb", "status": "incomplete_acoustic_evidence"}]}
+    write_dashboard({"stages": {"acoustic_drift_1": {"status": "completed", "evidence": evidence}}}, path)
+    doc = path.read_text(encoding="utf-8")
+    assert "Acoustic caption review" in doc
+    assert "<th scope=\"col\">Onset error</th>" in doc
+    assert "<td>300</td><td>-200</td>" in doc
+    assert "<td>—</td>" in doc
+    assert "<script>" not in doc and "<img" not in doc
+    assert "&lt;script&gt;model&lt;/script&gt;" in doc
+    assert "incomplete_acoustic_evidence" in doc
+
+
+@pytest.mark.parametrize("same_family,expected_exit", [(True, 2), (False, 3)])
+def test_consensus_cli_exit_distinguishes_blocked_from_review(tmp_path, capsys, same_family, expected_exit):
+    from argparse import Namespace
+
+    from vpp.intelligence_workflow import _consensus
+
+    audio = tmp_path / "source.wav"
+    audio.write_bytes(b"fixture")
+    first = track("whisperx", "whisper")
+    second = track("faster-whisper", "whisper") if same_family else track("ctc", "wav2vec")
+    paths = []
+    for i, data in enumerate([first, second]):
+        data["audio_sha256"] = _hash(audio)
+        path = tmp_path / f"track-{i}.json"
+        path.write_text(json.dumps(data))
+        paths.append(str(path))
+    assert _consensus(Namespace(audio=str(audio), tracks=paths, tolerance_ms=100)) == expected_exit
+    result = json.loads(capsys.readouterr().out)
+    assert result["decision"] == ("blocked" if same_family else "review_agreement")
+    assert not result["publication_approved"]
