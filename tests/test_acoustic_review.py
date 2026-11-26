@@ -49,3 +49,63 @@ def test_review_source_binding_and_invalid_timestamps(tmp_path):
     assert review_evidence(audio, srt, {**evidence, "words": [{"word": "!"}]})["decision"] == "blocked_empty_asr"
     with pytest.raises(ValueError, match="SHA-256"):
         review_evidence(audio, srt, {**evidence, "audio_sha256": "0"*64})
+
+
+def _drift_fixture(tmp_path, text, words, start="00:00:01,000", end="00:00:02,000"):
+    audio = tmp_path / "audio.m4a"
+    audio.write_bytes(b"fixture")
+    srt = tmp_path / "source.srt"
+    srt.write_text(f"1\n{start} --> {end}\n{text}\n", encoding="utf-8")
+    return review_evidence(audio, srt, {"audio_sha256": _hash(audio),
+                          "duration": 5, "words": words})
+
+
+def test_drift_sign_and_summary(tmp_path):
+    report = _drift_fixture(tmp_path, "Ein Haus", [
+        {"word": "Ein", "start": .7, "end": .9},
+        {"word": "Haus", "start": 1.0, "end": 2.2}])
+    cue = report["cue_drift"][0]
+    assert cue["onset_error_ms"] == 300
+    assert cue["offset_error_ms"] == -200
+    assert cue["status"] == "drift_candidate"
+    assert report["cue_drift_summary"]["boundary_mae_ms"] == 250
+    assert report["cue_drift_summary"]["boundary_p95_ms"] == 300
+    assert report["decision"] == "review_only"
+    assert not report["publication_approved"]
+
+
+def test_drift_within_threshold(tmp_path):
+    report = _drift_fixture(tmp_path, "Haus", [
+        {"word": "Haus", "start": .85, "end": 2.15}])
+    assert report["cue_drift"][0]["status"] == "within_tolerance"
+
+
+@pytest.mark.parametrize("text,words,status", [
+    ("Ein Haus", [{"word": "Ein", "start": .7, "end": .9}],
+     "incomplete_acoustic_evidence"),
+    ("Ein Haus", [{"word": "Ein", "start": .7, "end": .9},
+                  {"word": "großes", "start": 1, "end": 1.3},
+                  {"word": "Haus", "start": 1.4, "end": 2}],
+     "noncontiguous_acoustic_evidence"),
+    ("Ein Ein", [{"word": "Ein", "start": .7, "end": .9}],
+     "incomplete_acoustic_evidence"),
+    ("Haus", [{"word": "Haus", "start": None, "end": None}],
+     "incomplete_acoustic_evidence"),
+])
+def test_drift_withholds_unreliable_boundaries(tmp_path, text, words, status):
+    report = _drift_fixture(tmp_path, text, words)
+    assert report["cue_drift"][0]["status"] == status
+    assert "onset_error_ms" not in report["cue_drift"][0]
+    assert report["cue_drift_summary"]["boundary_mae_ms"] is None
+    assert report["cue_drift_summary"]["unmeasured_cues"] == 1
+
+
+def test_out_of_range_cue(tmp_path):
+    report = _drift_fixture(tmp_path, "Haus", [
+        {"word": "Haus", "start": 1, "end": 2}], end="00:00:06,000")
+    assert report["cue_drift"][0]["status"] == "screen_out_of_range"
+
+
+def test_punctuation_only_reference_is_rejected(tmp_path):
+    with pytest.raises(ValueError, match="lexical reference"):
+        _drift_fixture(tmp_path, "!!!", [])
