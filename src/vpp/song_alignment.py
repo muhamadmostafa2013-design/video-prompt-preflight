@@ -157,7 +157,8 @@ def run_alignment(args):
         if not args.demucs_repo and not args.allow_model_downloads:
             raise ValueError("Supply --demucs-repo with local weights or explicitly allow model downloads.")
         demucs = [args.demucs_python, "-m", "demucs", "-n", "htdemucs",
-                  "--two-stems", "vocals", "-d", args.device, "-o", str(output / "stems")]
+                  "--two-stems", "vocals", "--shifts", "0", "-d", args.device,
+                  "-o", str(output / "stems")]
         if args.demucs_repo:
             demucs += ["--repo", str(Path(args.demucs_repo).resolve(strict=True))]
         _run(demucs + [str(audio)], output / "demucs.log", env)
@@ -168,12 +169,18 @@ def run_alignment(args):
         report["stage"] = "whisperx"
         asr_dir = output / "asr"
         asr_dir.mkdir()
+        # Verify the API version before using its sentence-only interpolation.
+        _run([args.whisperx_python, "-c",
+              "from importlib.metadata import version; "
+              "assert version('whisperx') == '3.7.4', 'Requires WhisperX 3.7.4'"],
+             output / "whisperx-version.log", env)
+        report["whisperx_version"] = "3.7.4"
         command = [args.whisperx_python, "-m", "whisperx", str(vocals),
                    "--language", "de", "--task", "transcribe", "--model", args.model,
                    "--device", args.device, "--compute_type", "int8" if args.device == "cpu" else "float16",
                    "--batch_size", "4", "--vad_method", "silero",
                    "--output_dir", str(asr_dir), "--output_format", "json",
-                   "--interpolate_method", "ignore"]
+                   "--interpolate_method", "nearest"]
         if not args.allow_model_downloads:
             command += ["--model_cache_only", "True"]
         _run(command, output / "whisperx.log", env)

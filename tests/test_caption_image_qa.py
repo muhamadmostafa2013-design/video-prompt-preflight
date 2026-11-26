@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+from itertools import pairwise
 
 import pytest
 
@@ -94,7 +95,7 @@ def test_caption_sampling_long_gaps_and_cues():
     assert points[0] == (1.0, "")
     assert points[-1] == (39.0, "")
     assert sum(text == "Ein Nomen اسم" for _, text in points) == 10
-    assert max(b[0]-a[0] for a, b in zip(points, points[1:])) <= 2
+    assert max(b[0]-a[0] for a, b in pairwise(points)) <= 2
 
 
 def test_clean_source_sampling_does_not_depend_on_old_caption_timing():

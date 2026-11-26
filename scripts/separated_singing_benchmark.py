@@ -10,7 +10,7 @@ from faster_whisper import WhisperModel
 from faster_whisper.utils import download_model
 from public_singing_benchmark import TRACKS, download
 
-from vpp.acoustic_models import native_boundary
+from vpp.acoustic_review import preserve_unaligned_words
 from vpp.extended_quality import whisper_options
 from vpp.model_evidence import asr_evidence
 from vpp.singing_benchmark import PAIRED_METHODS, onset_benchmark, paired_summary
@@ -58,10 +58,13 @@ def main():
             segments, _ = asr.transcribe(audio, **whisper_options())
             segments = [{"start": float(s.start), "end": float(s.end), "text": s.text}
                         for s in segments]
-            aligned = whisperx.align(segments, align_model, metadata, audio, "cpu",
-                                     interpolate_method="ignore", return_char_alignments=False)
-            predicted = [{"word": w["word"], "start": native_boundary(w.get("start"))}
-                         for w in aligned.get("word_segments", [])]
+            # v3.7.4 interpolates sentence metadata, not word boundaries.
+            # Preserve recognized words even if a sentence cannot be aligned.
+            predicted = []
+            for segment in segments:
+                aligned = whisperx.align([segment], align_model, metadata, audio, "cpu",
+                                         interpolate_method="nearest", return_char_alignments=False)
+                predicted.extend(preserve_unaligned_words(segment["text"], aligned["word_segments"]))
             row["demucs_whisperx"] = onset_benchmark(ref, predicted, 60)
         except Exception as exc:  # noqa: BLE001 -- benchmark records partial results
             errors.append({"track": track, "error_type": type(exc).__name__, "message": str(exc)[:400]})
