@@ -20,7 +20,7 @@ def _word_rows(rows, duration, *, reference):
     invalid = 0
     for row in rows:
         if not isinstance(row, dict) or not isinstance(row.get("word"), str):
-            raise ValueError("Malformed benchmark word record.")
+            raise TypeError("Malformed benchmark word record.")
         tokens = _lex(row["word"])
         start, end = row.get("start"), row.get("end")
         interval = _number(start) and _number(end) and previous <= start < end <= duration
@@ -48,7 +48,7 @@ def score(audio, reference, evidence):
     if not isinstance(reference, dict) or reference.get("schema") != REFERENCE_SCHEMA:
         raise ValueError("Expected independent word annotations, not subtitles or ASR output.")
     if not isinstance(evidence, dict):
-        raise ValueError("Expected one local ASR evidence object.")
+        raise TypeError("Expected one local ASR evidence object.")
     digest = _hash(Path(audio))
     if any(row.get("audio_sha256") != digest for row in (reference, evidence)):
         raise ValueError("The audio, annotations and ASR evidence must match the same source hash.")
