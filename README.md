@@ -10,6 +10,9 @@ The CLI writes redirected output as UTF-8, including German and Arabic text.
 Read captured `--json` output as UTF-8. To avoid shell-specific encoding when
 saving a report on Windows, prefer the command's `--output` option when provided.
 
+For local reviewer-annotated German speech, use the [speech-timing pilot](docs/SPEECH_TIMING_PILOT.md)
+to measure both word boundaries without exporting recordings or transcripts.
+
 ## Why
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.

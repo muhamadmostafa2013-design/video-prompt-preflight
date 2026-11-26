@@ -439,6 +439,8 @@ def build_parser() -> argparse.ArgumentParser:
     register_caption_image_qa(sub)
     from .acoustic_review import register as register_acoustic_review
     register_acoustic_review(sub)
+    from .speech_timing_benchmark import register as register_speech_timing_benchmark
+    register_speech_timing_benchmark(sub)
 
     return p
 
