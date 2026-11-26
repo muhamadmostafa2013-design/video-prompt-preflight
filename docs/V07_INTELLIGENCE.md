@@ -47,3 +47,7 @@ The encoded project pipeline regression exercises actual FFmpeg decode, repair, 
 ### Unified project integration
 
 Set `"acoustic_drift_review": true` in the project manifest to include a separate source-bound acoustic drift report per supplementary track in `project-report.json` and the offline dashboard. Optional `"acoustic_drift_tolerance_ms": 150` is an integer between 0 and 5000; it is separate from the consensus repair tolerance. An unavailable or malformed requested track blocks the requested workflow; a measured timing deviation is a diagnostic, not a repair approval or a substitute for the consensus gate. No new model execution or paid API is introduced by this option. Existing manifests are unchanged by default. Review the original captions, not the repaired captions, in these per-track diagnostics.
+
+### Acoustic report readability and automation contract
+
+The offline project dashboard now displays per-track caption drift tables, with signed millisecond errors and explicit missing measurements. Model labels and caption text are HTML-escaped. No scripts, external resources or automatic publication are enabled. The `consensus` command exits 2 for blocked evidence and 3 for review agreement; callers must still inspect the report and obtain human listening review.
