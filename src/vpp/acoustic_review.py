@@ -82,7 +82,7 @@ def review_evidence(audio, srt, evidence):
     previous = 0.0
     for index, row in enumerate(raw, 1):
         if not isinstance(row, dict) or not isinstance(row.get("word"), str):
-            raise ValueError("Malformed word record.")
+            raise TypeError("Malformed word record.")
         tokens = _lex(row["word"])
         start, end = row.get("start"), row.get("end")
         valid = (len(tokens) == 1 and _number(start) and _number(end)
@@ -110,7 +110,7 @@ def review_evidence(audio, srt, evidence):
                      "end": item["end"], "probability": item["probability"],
                      "raw_index": item["raw_index"], "status": status, "candidate_count": 1})
     extras = [{**item, "status": "unresolved_observation"} for i, item in enumerate(observed) if i not in used]
-    return {"decision": "review_only" if raw else "blocked_empty_asr",
+    return {"decision": "review_only" if observed else "blocked_empty_asr",
             "audio_sha256": digest, "reference_srt_sha256": _hash(Path(srt)),
             "reference_words": len(refs), "observed_words": len(observed),
             "word_errors": errors, "wer": errors/len(refs), "invalid_raw_indices": invalid,

@@ -1,11 +1,15 @@
 import pytest
 
-from vpp.acoustic_review import preserve_unaligned_words, review_evidence, unique_matches
+from vpp.acoustic_review import (
+    preserve_unaligned_words,
+    review_evidence,
+    unique_matches,
+)
 from vpp.song_alignment import _hash
 
 
 def test_repeated_words_cannot_be_arbitrarily_matched():
-    cost, rows = unique_matches(["ein", "Haus".lower(), "ein", "haus"], ["ein", "haus"])
+    cost, rows = unique_matches(["ein", "haus", "ein", "haus"], ["ein", "haus"])
     assert cost == 2
     assert all(row["unique"] is None for row in rows)
 
@@ -42,5 +46,6 @@ def test_review_source_binding_and_invalid_timestamps(tmp_path):
     assert report["rows"][0]["start"] == .1
     assert not report["publication_approved"]
     assert review_evidence(audio, srt, {**evidence, "words": []})["decision"] == "blocked_empty_asr"
+    assert review_evidence(audio, srt, {**evidence, "words": [{"word": "!"}]})["decision"] == "blocked_empty_asr"
     with pytest.raises(ValueError, match="SHA-256"):
         review_evidence(audio, srt, {**evidence, "audio_sha256": "0"*64})

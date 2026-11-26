@@ -171,8 +171,8 @@ def run_alignment(args):
         asr_dir.mkdir()
         # Verify the API version before using its sentence-only interpolation.
         _run([args.whisperx_python, "-c",
-              "from importlib.metadata import version; "
-              "assert version('whisperx') == '3.7.4', 'Requires WhisperX 3.7.4'"],
+              ("from importlib.metadata import version; "
+               "assert version('whisperx') == '3.7.4', 'Requires WhisperX 3.7.4'")],
              output / "whisperx-version.log", env)
         report["whisperx_version"] = "3.7.4"
         command = [args.whisperx_python, "-m", "whisperx", str(vocals),
