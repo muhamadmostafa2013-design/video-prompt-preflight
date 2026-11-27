@@ -88,6 +88,37 @@ def write_dashboard(report, path):
              ("After: max drift (ms)", safe(obj(after.get("metrics")).get("max_absolute_ms", "—")))]
     card_html = "".join(f"<article><small>{label}</small><b>{value}</b></article>" for label, value in cards)
     sections = "".join(section(key, value) for key, value in report.items())
+    drift_sections = []
+    for key, stage in obj(report.get("stages")).items():
+        if not key.startswith("acoustic_drift_") or obj(stage).get("status") != "completed":
+            continue
+        evidence = obj(stage.get("evidence"))
+        summary = obj(evidence.get("cue_drift_summary"))
+        rows = evidence.get("cue_drift")
+        if not isinstance(rows, list) or not summary:
+            continue
+        label = " / ".join(str(evidence.get(k) or "not declared") for k in ("backend", "model"))
+        metrics = " · ".join(f"{name}: {safe(summary.get(field, 'not supplied'))}" for name, field in (
+            ("Measured", "measured_cues"), ("Unmeasured", "unmeasured_cues"),
+            ("Drift candidates", "drift_candidates"), ("Max absolute (ms)", "boundary_max_ms")))
+        body = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            values = [row.get(field) for field in ("cue", "text", "screen_start_ms", "screen_end_ms",
+                      "acoustic_start_ms", "acoustic_end_ms", "onset_error_ms", "offset_error_ms", "status")]
+            body.append("<tr>" + "".join(f"<td>{safe(value if value is not None else '—')}</td>"
+                                         for value in values) + "</tr>")
+        headers = ("Cue", "German text", "Screen start", "Screen end", "Audio start", "Audio end",
+                   "Onset error", "End error", "Status")
+        head = "".join(f'<th scope="col">{safe(value)}</th>' for value in headers)
+        drift_sections.append(f'<details open><summary>{safe(key)} · {safe(label)}</summary>'
+                              f'<p>{metrics}</p><p>Milliseconds; positive error = caption late. '
+                              'A dash means no measurement, not zero.</p>'
+                              '<div class="scroll" tabindex="0" role="region" aria-label="Caption drift table">'
+                              f'<table><thead><tr>{head}</tr></thead><tbody>{"".join(body)}</tbody>'
+                              '</table></div></details>')
+    drift_html = ('<h2>Acoustic caption review</h2>' + "".join(drift_sections)) if drift_sections else ""
     doc = ('<!doctype html><html lang="en"><meta charset="utf-8">'
            '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'">'
            '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -98,10 +129,13 @@ def write_dashboard(report, path):
            'article,details{background:white;border:1px solid #ccd3df;border-radius:12px;padding:16px}'
            'article small,article b{display:block}article b{margin-top:8px;font-size:22px;overflow-wrap:anywhere}'
            'details{margin:10px 0}summary{cursor:pointer;font-weight:600;overflow-wrap:anywhere}'
-           'pre{white-space:pre-wrap;overflow-wrap:anywhere}footer{font-size:14px;color:#536075}</style>'
+           'pre{white-space:pre-wrap;overflow-wrap:anywhere}.scroll{overflow-x:auto}'
+           'table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #ccd3df;'
+           'padding:8px;text-align:left;vertical-align:top}th{background:#eef2f7}'
+           'footer{font-size:14px;color:#536075}</style>'
            '<main><header><h1>VPP Quality Report</h1><p>Evidence only. Human review required.</p></header>'
            f'<section class="grid" aria-label="Quality summary">{card_html}</section>'
-           f'<h2>Evidence details</h2>{sections}'
+           f'{drift_html}<h2>Evidence details</h2>{sections}'
            '<footer>Local report · No uploads · Not a publication certificate</footer></main></html>')
     with Path(path).open("x", encoding="utf-8") as handle:
         handle.write(doc)
@@ -112,8 +146,9 @@ def _emit(result):
 
 
 def _consensus(args):
-    _emit(compare_tracks([_read_json(p) for p in args.tracks], _hash(Path(args.audio)), args.tolerance_ms))
-    return 3
+    result = compare_tracks([_read_json(p) for p in args.tracks], _hash(Path(args.audio)), args.tolerance_ms)
+    _emit(result)
+    return 3 if result["decision"] == "review_agreement" else 2
 
 
 def _heal(args):

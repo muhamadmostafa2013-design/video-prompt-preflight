@@ -82,6 +82,8 @@ def test_real_mux_with_synthetic_acoustic_evidence(encoded_fixture, tmp_path):
 def test_real_visual_decode(encoded_fixture):
     source, *_ = encoded_fixture
     result = visual_scan(source)
+    assert result["video_sha256"] == _hash(source)
+    assert result["duration_seconds"] > 0
     assert result["full_video_decode"] == "completed"
     assert result["samples"] == 4
     assert any(a["code"] == "near_identical_samples" for a in result["alerts"])

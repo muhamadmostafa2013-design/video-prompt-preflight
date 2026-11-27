@@ -108,3 +108,57 @@ def test_orphan_phone_reference_rejected(tmp_path):
     manifest.write_text(json.dumps(spec))
     with pytest.raises(ValueError, match="Phone reference requires"):
         project.run_project(manifest, tmp_path / "out")
+
+
+@pytest.mark.parametrize("value", [True, -1, 5001, 1.5, "150"])
+def test_project_rejects_invalid_drift_tolerance(tmp_path, value):
+    _, manifest, spec = fixture(tmp_path)
+    spec["acoustic_drift_tolerance_ms"] = value
+    manifest.write_text(json.dumps(spec))
+    with pytest.raises(ValueError, match="acoustic_drift_tolerance_ms"):
+        project.run_project(manifest, tmp_path / "out")
+    assert not (tmp_path / "out").exists()
+
+
+def test_project_requested_drift_without_tracks_blocks(tmp_path, monkeypatch):
+    _, manifest, spec = fixture(tmp_path)
+    spec["acoustic_drift_review"] = True
+    manifest.write_text(json.dumps(spec))
+    monkeypatch.setattr(project, "visual_scan", lambda *a: {"decision": "review"})
+    monkeypatch.setattr(project, "semantic_scan", lambda *a: {
+        "samples": [{"signal": "supports_expected"}]})
+    result = project.run_project(manifest, tmp_path / "out")
+    assert result["stages"]["acoustic_drift"]["status"] == "blocked"
+    assert result["decision"] == "blocked"
+
+
+@pytest.mark.parametrize("wrong_hash", [False, True])
+def test_project_drift_stage_uses_source_bound_track(tmp_path, monkeypatch, wrong_hash):
+    from vpp.song_alignment import _hash
+
+    root, manifest, spec = fixture(tmp_path)
+    (root / "srt").write_text("1\n00:00:01,000 --> 00:00:02,000\nEin Haus\n", encoding="utf-8")
+    digest = "0" * 64 if wrong_hash else _hash(root / "audio")
+    track = {"audio_sha256": digest, "duration": 5, "family": "ctc", "model": "fixture",
+             "words": [{"word": "Ein", "start": .7, "end": .9},
+                       {"word": "Haus", "start": 1, "end": 2.2}]}
+    (root / "track.json").write_text(json.dumps(track))
+    spec.update({"independent_tracks": ["track.json"], "acoustic_drift_review": True,
+                 "acoustic_drift_tolerance_ms": 200})
+    manifest.write_text(json.dumps(spec))
+    monkeypatch.setattr(project, "visual_scan", lambda *a: {"decision": "review"})
+    monkeypatch.setattr(project, "semantic_scan", lambda *a: {
+        "samples": [{"signal": "supports_expected"}]})
+    monkeypatch.setattr(project, "guarded_repair", lambda *a: {"decision": "blocked"})
+    result = project.run_project(manifest, tmp_path / "out")
+    stage = result["stages"]["acoustic_drift_1"]
+    if wrong_hash:
+        assert stage["status"] == "failed"
+    else:
+        assert stage["status"] == "completed"
+        assert stage["evidence"]["family"] == "ctc"
+        assert stage["evidence"]["cue_drift_summary"]["tolerance_ms"] == 200
+        assert stage["evidence"]["cue_drift"][0]["onset_error_ms"] == 300
+        assert not stage["evidence"]["publication_approved"]
+    assert result["decision"] == "blocked"
+    assert not result["publication_approved"]

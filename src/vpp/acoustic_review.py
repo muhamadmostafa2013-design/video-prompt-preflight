@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 from array import array
+from itertools import pairwise
 from pathlib import Path
 
 from .acoustic_models import native_boundary
@@ -63,7 +64,52 @@ def unique_matches(expected, observed):
     return cost, results
 
 
-def review_evidence(audio, srt, evidence):
+def cue_drift(captions, rows, duration, tolerance_ms=150):
+    """Measure complete, contiguous acoustic candidates; never authorize repair."""
+    if type(tolerance_ms) is not int or not 0 <= tolerance_ms <= 5000:
+        raise ValueError("Tolerance must be an integer in 0..5000 ms.")
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(row["cue"], []).append(row)
+    output = []
+    for cue in captions:
+        index = cue["index"]
+        group = grouped.get(index, [])
+        start, end = cue["start_ms"], cue["end_ms"]
+        entry = {"cue": index, "text": cue["lines"][0],
+                 "screen_start_ms": start, "screen_end_ms": end,
+                 "reference_words": len(group),
+                 "matched_words": sum(r["status"] == "candidate_match" for r in group)}
+        if not 0 <= start < end <= round(duration * 1000):
+            entry["status"] = "screen_out_of_range"
+        elif not group or any(r["status"] != "candidate_match" for r in group):
+            entry["status"] = "incomplete_acoustic_evidence"
+        elif any(b["raw_index"] != a["raw_index"] + 1 for a, b in pairwise(group)):
+            entry["status"] = "noncontiguous_acoustic_evidence"
+        else:
+            acoustic_start = round(group[0]["start"] * 1000)
+            acoustic_end = round(group[-1]["end"] * 1000)
+            onset, offset = start - acoustic_start, end - acoustic_end
+            entry.update({"acoustic_start_ms": acoustic_start, "acoustic_end_ms": acoustic_end,
+                          "onset_error_ms": onset, "offset_error_ms": offset,
+                          "status": "within_tolerance" if max(abs(onset), abs(offset)) <= tolerance_ms
+                          else "drift_candidate"})
+        output.append(entry)
+    measured = [r for r in output if "onset_error_ms" in r]
+    errors = sorted(abs(r[k]) for r in measured for k in ("onset_error_ms", "offset_error_ms"))
+    summary = {"total_cues": len(output), "measured_cues": len(measured),
+               "unmeasured_cues": len(output) - len(measured),
+               "drift_candidates": sum(r["status"] == "drift_candidate" for r in output),
+               "tolerance_ms": tolerance_ms, "boundary_mae_ms": None,
+               "boundary_p95_ms": None, "boundary_max_ms": None}
+    if errors:
+        summary.update({"boundary_mae_ms": sum(errors) / len(errors),
+                        "boundary_p95_ms": errors[(95 * len(errors) + 99) // 100 - 1],
+                        "boundary_max_ms": errors[-1]})
+    return output, summary
+
+
+def review_evidence(audio, srt, evidence, tolerance_ms=150):
     """Reference timing is visual only; never use it to choose an acoustic match."""
     digest = _hash(Path(audio))
     if evidence.get("audio_sha256") != digest:
@@ -75,6 +121,8 @@ def review_evidence(audio, srt, evidence):
     refs = [{"cue": cue["index"], "expected": token, "screen_start": cue["start_ms"]/1000,
              "screen_end": cue["end_ms"]/1000}
             for cue in captions for token in _lex(cue["lines"][0])]
+    if not refs:
+        raise ValueError("SRT must contain at least one lexical reference token.")
     raw = evidence["words"]
     if not isinstance(raw, list) or len(raw) > 2000:
         raise ValueError("Invalid word track.")
@@ -110,18 +158,20 @@ def review_evidence(audio, srt, evidence):
                      "end": item["end"], "probability": item["probability"],
                      "raw_index": item["raw_index"], "status": status, "candidate_count": 1})
     extras = [{**item, "status": "unresolved_observation"} for i, item in enumerate(observed) if i not in used]
+    cue_rows, cue_summary = cue_drift(captions, rows, duration, tolerance_ms)
     return {"decision": "review_only" if observed else "blocked_empty_asr",
             "audio_sha256": digest, "reference_srt_sha256": _hash(Path(srt)),
             "reference_words": len(refs), "observed_words": len(observed),
             "word_errors": errors, "wer": errors/len(refs), "invalid_raw_indices": invalid,
             "candidate_matches": sum(row["status"] == "candidate_match" for row in rows),
             "rows": rows, "unresolved_observations": extras,
+            "cue_drift": cue_rows, "cue_drift_summary": cue_summary,
             "publication_approved": False, "human_listening_verified": False,
-            "limitations": "Candidate matches only. Screen times are not acoustic ground truth. No subtitle repair."}
+            "limitations": "Candidate matches only. Screen times are not acoustic ground truth. Positive boundary errors mean captions are late. No subtitle repair."}
 
 
 def _command(args):
-    report = review_evidence(args.audio, args.srt, _read_json(args.evidence))
+    report = review_evidence(args.audio, args.srt, _read_json(args.evidence), args.tolerance_ms)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=False)
     (output / "acoustic-review.json").write_text(json.dumps(report, ensure_ascii=False,
@@ -132,7 +182,14 @@ def _command(args):
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         writer.writerows(report["rows"])
-    print(json.dumps({k: v for k, v in report.items() if k not in ("rows", "unresolved_observations")},
+    cue_fields = ["cue", "text", "screen_start_ms", "screen_end_ms", "reference_words", "matched_words",
+                  "acoustic_start_ms", "acoustic_end_ms", "onset_error_ms", "offset_error_ms", "status"]
+    with (output / "cue-drift.csv").open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=cue_fields)
+        writer.writeheader()
+        writer.writerows(report["cue_drift"])
+    print(json.dumps({k: v for k, v in report.items()
+                      if k not in ("rows", "unresolved_observations", "cue_drift")},
                      ensure_ascii=False, indent=2, allow_nan=False))
     return 2 if report["decision"] == "blocked_empty_asr" else 3
 
@@ -142,5 +199,7 @@ def register(sub):
     parser.add_argument("--audio", required=True)
     parser.add_argument("--srt", required=True)
     parser.add_argument("--evidence", required=True)
+    parser.add_argument("--tolerance-ms", type=int, default=150,
+                        help="Candidate caption-boundary drift threshold (not a perceptual guarantee)")
     parser.add_argument("-o", "--output", required=True)
     parser.set_defaults(func=_command)
