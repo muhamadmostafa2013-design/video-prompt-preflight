@@ -25,6 +25,12 @@ test("pure subtitle and evidence guards",()=>{
   expect(tracks(report("a","b"),"wrong","b")).toEqual([]);
   expect(tracks(report("a","b"),"a","wrong")).toEqual([]);
   expect(tracks(report("a","b"),"a","b")).toHaveLength(1);
+  const invalid=report("a","b");
+  invalid.stages.acoustic_drift_1.evidence.cue_drift.push({cue:1,status:"within_tolerance"});
+  expect(tracks(invalid,"a","b")).toEqual([]);
+  const malformed=report("a","b");
+  malformed.stages.acoustic_drift_1.evidence.rows[0].expected={toString: null};
+  expect(tracks(malformed,"a","b")).toEqual([]);
 });
 test("local playback, bound evidence, manual draft and invalid edit",async({page})=>{
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
@@ -75,4 +81,50 @@ test("mismatched evidence is not linked; narrow viewport remains usable",async({
   await page.locator("#captionList button").first().click();
   await expect(page.locator("#seekAudio")).toBeDisabled();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+
+test("invalid optional report preserves manual draft and playable video",async({page})=>{
+  const errors=[];page.on("pageerror",e=>errors.push(e.message));
+  await page.goto("/quality-studio.html");
+  await page.locator("#videoFile").setInputFiles(videoPath);
+  await page.locator("#srtFile").setInputFiles({name:"source.srt",mimeType:"text/plain",buffer:Buffer.from(srt)});
+  await expect(page.locator("#captionList button")).toHaveCount(2);
+  await page.locator("#captionList button").first().click();
+  await expect(page.locator("#saveTiming")).toBeEnabled();
+  await page.locator("#start").fill("250");
+  await page.locator("#saveTiming").click();
+  await expect(page.locator("#captionList button").first()).toContainText("EDITED");
+  await page.locator("#reportFile").setInputFiles({name:"broken.json",mimeType:"application/json",buffer:Buffer.from("{")});
+  await expect(page.locator("#status")).toContainText("Report ignored");
+  await expect(page.locator("#captionList button").first()).toContainText("250–700");
+  await expect(page.locator("#saveTiming")).toBeEnabled();
+  await page.locator("#ack").check();
+  await expect(page.locator("#export")).toBeEnabled();
+  expect(errors).toEqual([]);
+});
+
+test("edited originally matching cues stay visible in flagged filter",async({page})=>{
+  await page.goto("/quality-studio.html");
+  await page.locator("#videoFile").setInputFiles(videoPath);
+  await page.locator("#srtFile").setInputFiles({name:"source.srt",mimeType:"text/plain",buffer:Buffer.from(srt)});
+  await page.locator("#reportFile").setInputFiles({name:"report.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify(report(sha(fs.readFileSync(videoPath)),sha(srt))))});
+  await expect(page.locator("#status")).toContainText("1 source-bound");
+  await page.locator("#captionList button").nth(1).click();
+  await expect(page.locator("#saveTiming")).toBeEnabled();
+  await page.locator("#start").fill("900");
+  await page.locator("#saveTiming").click();
+  await page.locator("#issuesOnly").check();
+  await expect(page.locator("#captionList button")).toHaveCount(2);
+  await expect(page.locator("#captionList button").nth(1)).toContainText("EDITED");
+  await expect(page.locator("#captionList button").nth(1)).toContainText("Original evidence");
+});
+
+test("320px to desktop width without horizontal overflow",async({page})=>{
+  await page.goto("/quality-studio.html");
+  for(const width of [320,390,768,1280]){
+    await page.setViewportSize({width,height:844});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
 });
