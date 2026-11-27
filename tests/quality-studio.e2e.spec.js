@@ -2,7 +2,7 @@ const { test, expect } = require("@playwright/test");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const {parse, serialize, tracks, active, draftIssues, candidateDelta} = require("../web/quality-studio.js");
+const {parse, serialize, tracks, active, draftIssues, candidateDelta, waveformEvidence} = require("../web/quality-studio.js");
 const videoPath=path.join(__dirname,"e2e.webm");
 const srt="1\n00:00:00,100 --> 00:00:00,700\nEin Nomen\nاسم\n\n2\n00:00:00,800 --> 00:00:01,500\nein Verb\nفعل\n";
 const sha=x=>crypto.createHash("sha256").update(x).digest("hex");
@@ -170,4 +170,33 @@ test("timeline, playhead controls and draft diagnostics in Chromium",async({page
   await expect(page.locator("#export")).toBeDisabled();
   await page.locator("#reset").click();
   await expect(page.locator("#draftSummary")).toContainText("0 invalid / conflicting");
+});
+
+
+test("waveform rejects invalid peaks and wrong source",()=>{
+  const r={stages:{waveform:{status:"completed",evidence:{video_sha256:"a",duration_seconds:2,peaks:[0,.5,1]}}}};
+  expect(waveformEvidence(r,"a",2000).peaks).toEqual([0,.5,1]);
+  expect(waveformEvidence(r,"b",2000)).toBeNull();
+  expect(waveformEvidence(r,"a",3000)).toBeNull();
+  r.stages.waveform.evidence.peaks=[0,2];
+  expect(waveformEvidence(r,"a",2000)).toBeNull();
+});
+
+test("hash-bound waveform display and pointer seek",async({page})=>{
+  await page.goto("/quality-studio.html");
+  const hash=sha(fs.readFileSync(videoPath));
+  const r={stages:{waveform:{status:"completed",evidence:{
+    video_sha256:hash,duration_seconds:2,peaks:[0,.2,.8,.4,0]
+  }}}};
+  await page.locator("#videoFile").setInputFiles(videoPath);
+  await page.locator("#reportFile").setInputFiles({name:"report.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify(r))});
+  await expect(page.locator("#waveStatus")).toContainText("Actual mono audio peaks");
+  const canvas=page.locator("#waveform"),rect=await canvas.boundingBox();
+  await canvas.click({position:{x:rect.width/2,y:rect.height/2}});
+  await expect.poll(()=>page.locator("#video").evaluate(v=>v.currentTime)).toBeCloseTo(1,1);
+  r.stages.waveform.evidence.video_sha256="wrong";
+  await page.locator("#reportFile").setInputFiles({name:"wrong.json",mimeType:"application/json",
+    buffer:Buffer.from(JSON.stringify(r))});
+  await expect(page.locator("#waveStatus")).toContainText("No source-bound");
 });
