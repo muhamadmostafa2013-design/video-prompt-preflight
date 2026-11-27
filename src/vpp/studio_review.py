@@ -11,7 +11,7 @@ from .acoustic_review import review_evidence
 from .intelligence_workflow import guarded_repair
 from .quality_engine import visual_scan
 from .song_alignment import _hash, run_alignment
-from .subtitle_sync import parse_srt
+from .subtitle_sync import load_evidence, parse_srt
 from .waveform import waveform
 
 
@@ -61,10 +61,21 @@ def run_desktop_review(video, lyrics, srt, demucs_repo, whisper_model, ctc_model
             return {"decision": "review", "publication_approved": False}
         aligned = stage("whisperx", align)
         track = stage("ctc", lambda: LocalGermanCTC(ctc_model).transcribe(video))
+    primary_review = None
+    ctc_review = None
+    if aligned is not None:
+        def audit_primary():
+            words, duration, _ = load_evidence(video, lyrics, root / "alignment")
+            primary = {"words": words, "source_duration_seconds": duration,
+                       "audio_sha256": source_hashes[0]}
+            return {**review_evidence(video, srt, primary), "model": whisper_model.name,
+                    "backend": "whisperx"}
+        primary_review = stage("acoustic_drift_1", audit_primary)
     if track is not None:
-        stage("acoustic_drift_1", lambda: {**review_evidence(video, srt, track),
-                                           "model": track.get("model"), "backend": track.get("backend")})
-    if (aligned is not None and track is not None and
+        ctc_review = stage("acoustic_drift_2", lambda: {**review_evidence(video, srt, track),
+                                                       "model": track.get("model"), "backend": track.get("backend")})
+    if (aligned is not None and track is not None and primary_review is not None and ctc_review is not None
+            and primary_review.get("decision") == ctc_review.get("decision") == "review_only" and
             [_hash(p) for p in (video, lyrics, srt)] == source_hashes):
         repair = stage("consensus_repair", lambda: guarded_repair(
             video, lyrics, srt, root / "alignment", [track], root / "caption-review"))
