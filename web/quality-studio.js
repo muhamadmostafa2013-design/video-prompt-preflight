@@ -94,13 +94,23 @@ const Studio = (() => {
     return Object.entries(report?.stages||{}).filter(([,v])=>v?.status==="completed"&&v.evidence?.video_sha256===videoHash)
       .map(([key,v])=>({key,evidence:v.evidence}));
   }
+  function waveformEvidence(report,videoHash,durationMs) {
+    const stage=report?.stages?.waveform;
+    const e=stage?.evidence;
+    if(stage?.status!=="completed"||!videoHash||e?.video_sha256!==videoHash||
+       !Number.isFinite(durationMs)||!Number.isFinite(e.duration_seconds)||
+       Math.abs(e.duration_seconds*1000-durationMs)>150||
+       !Array.isArray(e.peaks)||e.peaks.length<1||e.peaks.length>2400||
+       !e.peaks.every(p=>Number.isFinite(p)&&p>=0&&p<=1))return null;
+    return e;
+  }
   async function hash(file,limit) {
     if (file.size>limit) throw Error("File exceeds local hashing limit.");
     if (!globalThis.crypto?.subtle) throw Error("SHA-256 requires a secure localhost or HTTPS context.");
     const bytes=await globalThis.crypto.subtle.digest("SHA-256",await file.arrayBuffer());
     return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
   }
-  return {parse,serialize,validate,active,tracks,visual,hash,scalar,draftIssues,candidateDelta,MAX_TEXT,MAX_VIDEO};
+  return {parse,serialize,validate,active,tracks,visual,hash,scalar,draftIssues,candidateDelta,waveformEvidence,MAX_TEXT,MAX_VIDEO};
 })();
 if (typeof module!=="undefined") module.exports=Studio;
 if (typeof document!=="undefined") {
@@ -129,7 +139,23 @@ if (typeof document!=="undefined") {
     const issues=Studio.draftIssues(draft,duration());
     $("draftSummary").textContent=draft.length+" cues · "+draft.filter(edited).length+" edited · "+issues.size+" invalid / conflicting. "+(valid?"Timing structurally valid (not acoustic approval).":"Export unavailable until intervals and video are valid.");
   }
+  function drawWave(){
+    const canvas=$("waveform"),ctx=canvas.getContext("2d");
+    const e=Studio.waveformEvidence(report,videoHash,duration());
+    const w=canvas.width,h=canvas.height;
+    ctx.clearRect(0,0,w,h);
+    if(!e){$("waveStatus").textContent="No source-bound decoded waveform.";return;}
+    $("waveStatus").textContent="Actual mono audio peaks · click to seek · not phoneme evidence";
+    ctx.fillStyle="#82afe7";
+    for(let x=0;x<w;x++){
+      const p=e.peaks[Math.floor(x*e.peaks.length/w)];
+      ctx.fillRect(x,(h-h*p)/2,1,Math.max(1,h*p));
+    }
+    ctx.fillStyle="#ffcf87";
+    ctx.fillRect(Math.min(w-2,Math.max(0,video.currentTime*1000/duration()*w)),0,2,h);
+  }
   function drawActive(){
+    drawWave();
     const now=Math.max(0,Math.round(video.currentTime*1000));
     $("timeline").value=String(now);
     $("playbackTime").textContent=now+" ms / "+(duration()===null?"—":duration()+" ms");
@@ -225,6 +251,11 @@ if (typeof document!=="undefined") {
   video.addEventListener("timeupdate",drawActive);
   $("ack").addEventListener("change",refreshButtons);
   $("timeline").addEventListener("input",()=>seek($("timeline").valueAsNumber));
+  $("waveform").addEventListener("click",event=>{
+    if(!Studio.waveformEvidence(report,videoHash,duration()))return;
+    const rect=$("waveform").getBoundingClientRect();
+    seek(Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width))*duration());
+  });
   $("setStart").addEventListener("click",()=>{$("start").value=String(Math.round(video.currentTime*1000));});
   $("setEnd").addEventListener("click",()=>{$("end").value=String(Math.round(video.currentTime*1000));});
   $("seekAudio").addEventListener("click",()=>seek(rowFor(selected)?.acoustic_start_ms));
