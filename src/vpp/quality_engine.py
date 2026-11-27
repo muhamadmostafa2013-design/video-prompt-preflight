@@ -113,6 +113,7 @@ def language_review(captions, glossary):
 def visual_scan(video):
     """Decode whole video and inspect all one-second grayscale samples; no identity claims."""
     path = Path(video).resolve(strict=True)
+    source_hash = _hash(path)
     info = _probe(path)
     _one_stream(info, "video")
     duration = float(info["format"]["duration"])
@@ -139,7 +140,10 @@ def visual_scan(video):
                 alerts.append({"sample": i, "code": "large_visual_change", "mean_difference": round(diff, 2)})
             if diff < .2:
                 alerts.append({"sample": i, "code": "near_identical_samples"})
+    if _hash(path) != source_hash:
+        raise ValueError("Video changed during visual review.")
     return {"decision": "review", "full_video_decode": "completed", "sample_rate_hz": 1,
+            "video_sha256": source_hash, "duration_seconds": duration,
             "samples": len(frames), "alerts": alerts, "publication_approved": False,
             "limitations": "Sampled luminance/change only. Intentional stills/cuts can trigger. No face identity, clothing, OCR, scene meaning or all-frame content certification."}
 
