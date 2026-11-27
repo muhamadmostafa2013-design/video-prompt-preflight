@@ -117,6 +117,24 @@ vpp jev-review <prompt.txt> --provider veo --allow-remote-judge
 vpp check-video <video.mp4> --spec <scene.yml> [--ocr] [--asr-model /local/model]
 ```
 
+### Google Flow Veo 3.1 Lite format check
+
+For **Text to Video in the Google Flow UI**, add this opt-in check to Scene Spec lint:
+
+    vpp lint scene.yml --target flow-veo-3.1-lite-text-to-video --json
+
+Set explicit duration (4, 6 or 8 seconds) and aspect ratio ("9:16" or "16:9").
+Unsupported or inferred settings fail lint (exit code 2). Plain lint is unchanged.
+If you imported a prompt and the check flags inferred settings, add the intended duration
+and aspect ratio to the source prompt and re-import it, then run the check again.
+When shortening a shot, review its approved timeline and dialogue rather than assuming
+the original scene fits.
+
+This offline check follows [Google Flow Help](https://support.google.com/flow/answer/16352836?hl=en)
+as checked on 2026-11-27. It does not apply to Gemini, the Veo API, frames or ingredients,
+or any other Flow mode. It cannot verify account availability, current credit cost,
+or actual generation results and makes no request to Google.
+
 ## Regression-first workflow
 
 ```text

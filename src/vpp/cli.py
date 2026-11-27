@@ -10,6 +10,7 @@ import yaml
 from .analyzer import analyze_scene
 from .compiler import compile_scene
 from .fixer import auto_fix_scene
+from .flow_format import FLOW_VEO_LITE_TEXT, flow_veo_lite_text_findings
 from .german_music_qa import compile_song_prompt, review_song
 from .io import dump_scene, load_scene
 from .jev_judge import jev_review
@@ -50,6 +51,11 @@ def _read_text(path: str) -> str:
 def cmd_lint(args: argparse.Namespace) -> int:
     scene = load_scene(args.file)
     report = analyze_scene(scene)
+    if getattr(args, "target", None) == FLOW_VEO_LITE_TEXT:
+        target_findings = flow_veo_lite_text_findings(scene)
+        if target_findings:
+            report.findings = [finding for finding in report.findings if finding.rule_id != "preflight.clean"]
+            report.findings.extend(target_findings)
     if args.json:
         print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2))
     else:
@@ -335,6 +341,8 @@ def build_parser() -> argparse.ArgumentParser:
     lint = sub.add_parser("lint", help="Analyze a structured Scene Spec")
     lint.add_argument("file")
     lint.add_argument("--json", action="store_true")
+    lint.add_argument("--target", choices=(FLOW_VEO_LITE_TEXT,),
+                      help="also check documented Google Flow Veo 3.1 Lite text-to-video format")
     lint.set_defaults(func=cmd_lint)
 
     compile_p = sub.add_parser("compile", help="Compile a Scene Spec into a compact prompt")
