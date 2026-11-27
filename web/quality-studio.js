@@ -1,0 +1,175 @@
+"use strict";
+const Studio = (() => {
+  const MAX_TEXT = 4 * 1024 * 1024;
+  const MAX_VIDEO = 256 * 1024 * 1024;
+  function ms(stamp) {
+    const m = /^(\d{2}):([0-5]\d):([0-5]\d),(\d{3})$/.exec(stamp);
+    if (!m) throw Error("Invalid SRT timestamp.");
+    return ((Number(m[1])*60+Number(m[2]))*60+Number(m[3]))*1000+Number(m[4]);
+  }
+  function stamp(n) {
+    const p = (v,k=2) => String(v).padStart(k,"0");
+    return p(Math.floor(n/3600000))+":"+p(Math.floor(n/60000)%60)+":"+p(Math.floor(n/1000)%60)+","+p(n%1000,3);
+  }
+  function validate(cues, duration=Infinity) {
+    if (!Array.isArray(cues) || !cues.length || cues.length > 2000) throw Error("Expected 1–2000 captions.");
+    let end=0;
+    for (const c of cues) {
+      if (!Number.isSafeInteger(c.start) || !Number.isSafeInteger(c.end) || c.start<end || c.end<=c.start || c.end>duration || c.end>=360000000)
+        throw Error("Caption intervals must be ordered, non-overlapping and inside the video.");
+      if (!Array.isArray(c.lines) || !c.lines.length || c.lines.some(l=>typeof l!=="string" || !l.trim() || /[<>\x00\r\n]/.test(l)))
+        throw Error("Plain nonempty caption text required.");
+      end=c.end;
+    }
+    return cues;
+  }
+  function parse(text) {
+    if (typeof text!=="string" || text.length>MAX_TEXT) throw Error("SRT too large.");
+    const clean=text.replace(/^\uFEFF/,"").replace(/\r\n?/g,"\n").trim();
+    const cues=clean.split(/\n[ \t]*\n+/).map((block,i)=>{
+      const [number,timing,...lines]=block.split("\n");
+      const m=/^(\d{2}:[0-5]\d:[0-5]\d,\d{3}) --> (\d{2}:[0-5]\d:[0-5]\d,\d{3})$/.exec((timing||"").trim());
+      if (number.trim()!==String(i+1) || !m) throw Error("Invalid SRT cue "+(i+1));
+      return {index:i+1,start:ms(m[1]),end:ms(m[2]),lines};
+    });
+    // Original captions may overlap or exceed the media: open for manual review,
+    // but validate the full edited draft before any export.
+    if (cues.length>2000 || cues.some(c=>c.end<=c.start || !c.lines.length ||
+        c.lines.some(l=>!l.trim() || /[<>\x00]/.test(l)))) throw Error("Invalid plain SRT captions.");
+    return cues;
+  }
+  function serialize(cues,duration) {
+    validate(cues,duration);
+    return cues.map((c,i)=>[i+1,stamp(c.start)+" --> "+stamp(c.end),...c.lines].join("\n")).join("\n\n")+"\n";
+  }
+  function active(cues,time) { return cues.filter(c=>c.start<=time && time<c.end); }
+  function tracks(report, videoHash, srtHash) {
+    if (!videoHash || !srtHash || !report || typeof report!=="object") return [];
+    const candidates=Array.isArray(report.cue_drift)?[["acoustic-review",report]]:
+      Object.entries(report.stages||{}).filter(([k,v])=>k.startsWith("acoustic_drift_")&&v?.status==="completed").map(([k,v])=>[k,v.evidence]);
+    return candidates.filter(([,e])=>e?.audio_sha256===videoHash&&e.reference_srt_sha256===srtHash&&Array.isArray(e.cue_drift)&&Array.isArray(e.rows))
+      .map(([key,e])=>({key,e}));
+  }
+  function visual(report,videoHash) {
+    if (!videoHash) return [];
+    return Object.entries(report?.stages||{}).filter(([,v])=>v?.status==="completed"&&v.evidence?.video_sha256===videoHash)
+      .map(([key,v])=>({key,evidence:v.evidence}));
+  }
+  async function hash(file,limit) {
+    if (file.size>limit) throw Error("File exceeds local hashing limit.");
+    if (!globalThis.crypto?.subtle) throw Error("SHA-256 requires a secure localhost or HTTPS context.");
+    const bytes=await globalThis.crypto.subtle.digest("SHA-256",await file.arrayBuffer());
+    return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
+  }
+  return {parse,serialize,validate,active,tracks,visual,hash,MAX_TEXT,MAX_VIDEO};
+})();
+if (typeof module!=="undefined") module.exports=Studio;
+if (typeof document!=="undefined") {
+  const $=id=>document.getElementById(id);
+  const video=$("video");
+  let original=[],draft=[],report=null,videoHash=null,srtHash=null,objectUrl=null,selected=null,available=[],generation=0;
+  let mediaLoaded=false;
+  const notice=message=>{$("status").textContent=message;};
+  const duration=()=>mediaLoaded&&Number.isFinite(video.duration)?Math.floor(video.duration*1000):null;
+  function currentTrack(){return available.find(t=>t.key===$("track").value)?.e;}
+  function rowFor(index){return currentTrack()?.cue_drift.find(r=>r?.cue===index);}
+  function seek(ms){if (duration()!==null&&Number.isFinite(ms)&&ms>=0&&ms<=duration()) video.currentTime=ms/1000;}
+  function refreshButtons(){
+    const c=draft.find(x=>x.index===selected), r=rowFor(selected);
+    $("saveTiming").disabled=!c||duration()===null;
+    $("seekAudio").disabled=!r||!Number.isFinite(r.acoustic_start_ms)||duration()===null||r.acoustic_start_ms<0||r.acoustic_start_ms>duration();
+    $("reset").disabled=!draft.length;
+    let valid=false;
+    try{if(duration()!==null){Studio.validate(draft,duration());valid=true;}}catch{}
+    $("export").disabled=!valid||!$("ack").checked;
+  }
+  function drawActive(){
+    const playing=Studio.active(draft,video.currentTime*1000);
+    $("caption").textContent=playing.map(c=>c.lines.join("\n")).join("\n\n");
+    for(const el of $("captionList").children) el.setAttribute("aria-current",String(playing.some(c=>String(c.index)===el.dataset.cue)));
+  }
+  function drawSelection(){
+    const c=draft.find(x=>x.index===selected);
+    $("selected").textContent=c?c.lines.join(" / "):"Select a cue to seek to its screen time.";
+    $("start").value=c?c.start:"";$("end").value=c?c.end:"";
+    const words=currentTrack()?.rows.filter(r=>r?.cue===selected)||[];
+    $("words").textContent=words.length?words.map(r=>[r.expected,r.heard_candidate||"—",Number.isFinite(r.start)?r.start+"–"+r.end+" s":"no timing",r.status].join(" | ")).join("\n"):"No bound word evidence for this cue.";
+    refreshButtons();
+  }
+  function drawList(){
+    $("captionList").replaceChildren();
+    for(const c of draft){
+      const r=rowFor(c.index);
+      if($("issuesOnly").checked&&r?.status==="within_tolerance")continue;
+      const b=document.createElement("button");b.className="cue";b.dataset.cue=String(c.index);
+      const signed=r&&Number.isFinite(r.onset_error_ms)?(r.onset_error_ms>0?"+":"")+r.onset_error_ms+" ms":"—";
+      b.textContent=c.index+" · "+c.start+"–"+c.end+" ms · "+(r?.status||"unmeasured")+" · "+signed+"\n"+c.lines.join("\n");
+      b.addEventListener("click",()=>{selected=c.index;seek(c.start);drawSelection();});
+      $("captionList").appendChild(b);
+    }
+    drawActive();drawSelection();
+  }
+  function bindReport(){
+    available=Studio.tracks(report,videoHash,srtHash);
+    $("track").replaceChildren();
+    const none=document.createElement("option");none.value="";none.textContent="No track selected";$("track").appendChild(none);
+    for(const t of available){const o=document.createElement("option");o.value=t.key;o.textContent=t.key+" · "+(t.e.model||"model not declared");$("track").appendChild(o);}
+    if(available.length)$("track").value=available[0].key;
+    $("visual").replaceChildren();
+    const evidence=Studio.visual(report,videoHash);
+    for(const stage of evidence){
+      const h=document.createElement("h3");h.textContent=stage.key;$("visual").appendChild(h);
+      const pre=document.createElement("pre");pre.textContent=JSON.stringify(stage.evidence,null,2).slice(0,50000);$("visual").appendChild(pre);
+      const rows=stage.evidence.rows||stage.evidence.samples;
+      if(Array.isArray(rows))for(const r of rows.slice(0,600)){
+        if(!Number.isFinite(r?.seconds)||r.seconds<0)continue;
+        const b=document.createElement("button");b.textContent="Inspect "+r.seconds+" s";b.addEventListener("click",()=>seek(r.seconds*1000));$("visual").appendChild(b);
+      }
+    }
+    if(!evidence.length)$("visual").textContent="No hash-bound visual evidence. Inspect the video manually.";
+    notice(report?available.length+" source-bound acoustic track(s). Exact byte hashes do not establish model correctness. Reports for a different audio file are not linked.":"Local manual review; no report loaded.");
+    drawList();
+  }
+  async function load(){
+    const ticket=++generation;
+    mediaLoaded=false;video.pause();video.removeAttribute("src");video.load();
+    if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
+    original=[];draft=[];report=null;videoHash=null;srtHash=null;selected=null;$("ack").checked=false;bindReport();
+    const vf=$("videoFile").files[0], sf=$("srtFile").files[0], rf=$("reportFile").files[0];
+    notice("Opening local files…");
+    try{
+      if(sf&&sf.size>Studio.MAX_TEXT||rf&&rf.size>Studio.MAX_TEXT)throw Error("SRT/JSON file exceeds 4 MiB.");
+      const captions=sf?Studio.parse(await sf.text()):[];
+      const data=rf?JSON.parse(await rf.text()):null;
+      let vh=null,sh=null,hashWarning="";
+      try{if(vf&&rf)vh=await Studio.hash(vf,Studio.MAX_VIDEO);if(sf&&rf)sh=await Studio.hash(sf,Studio.MAX_TEXT);}
+      catch(err){hashWarning=" "+err.message+" Evidence remains unbound.";}
+      if(ticket!==generation)return;
+      original=captions;draft=captions.map(c=>({...c,lines:[...c.lines]}));report=data;videoHash=vh;srtHash=sh;
+      if(vf){objectUrl=URL.createObjectURL(vf);video.src=objectUrl;}
+      bindReport();if(hashWarning)notice($("status").textContent+hashWarning);
+    }catch(err){if(ticket===generation)notice("Cannot open files: "+err.message);}
+  }
+  for(const id of ["videoFile","srtFile","reportFile"])$(id).addEventListener("change",load);
+  $("track").addEventListener("change",drawList);$("issuesOnly").addEventListener("change",drawList);
+  video.addEventListener("loadedmetadata",()=>{mediaLoaded=!!objectUrl&&video.currentSrc===objectUrl;refreshButtons();drawActive();});
+  video.addEventListener("error",()=>{mediaLoaded=false;refreshButtons();notice("Video cannot be played by this browser.");});
+  video.addEventListener("timeupdate",drawActive);
+  $("ack").addEventListener("change",refreshButtons);
+  $("seekAudio").addEventListener("click",()=>seek(rowFor(selected)?.acoustic_start_ms));
+  $("saveTiming").addEventListener("click",()=>{
+    const c=draft.find(x=>x.index===selected),start=$("start").valueAsNumber,end=$("end").valueAsNumber;
+    if(!c||duration()===null||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>=end||end>duration()){notice("Invalid manual interval.");return;}
+    c.start=start;c.end=end;$("ack").checked=false;drawList();notice("Manual timing saved in memory. Resolve all overlaps before export; original evidence is unchanged.");
+  });
+  $("reset").addEventListener("click",()=>{draft=original.map(c=>({...c,lines:[...c.lines]}));$("ack").checked=false;drawList();notice("Original subtitle timing restored.");});
+  $("export").addEventListener("click",()=>{
+    try{if(!$("ack").checked||duration()===null)throw Error("Review acknowledgement and playable video required.");
+      const srt=Studio.serialize(draft,duration());const url=URL.createObjectURL(new Blob([srt],{type:"text/plain;charset=utf-8"}));
+      const a=document.createElement("a");a.href=url;a.download="REVIEW_ONLY.srt";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      notice("Review-only SRT draft exported; not publication approval.");
+    }catch(err){notice(err.message);}
+  });
+  window.addEventListener("pagehide",()=>{if(objectUrl)URL.revokeObjectURL(objectUrl);});
+  refreshButtons();
+}
