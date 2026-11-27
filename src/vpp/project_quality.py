@@ -16,6 +16,7 @@ from .quality_engine import render_draft, visual_scan
 from .quality_evidence import _read_json
 from .subtitle_sync import parse_srt
 from .triple_review import triple_review
+from .waveform import waveform
 
 
 def _local_path(root, name):
@@ -42,7 +43,7 @@ def run_project(manifest, output):
         if key in spec:
             paths[key] = _local_path(root, spec[key])
     for key in ("render", "clean_source", "burn", "caption_image_qa", "strict_educational_qa",
-                "acoustic_drift_review"):
+                "acoustic_drift_review", "waveform"):
         if key in spec and type(spec[key]) is not bool:
             raise ValueError(f"{key} must be a JSON boolean.")
     drift_requested = spec.get("acoustic_drift_review") is True
@@ -98,6 +99,10 @@ def run_project(manifest, output):
     else:
         skip("preflight", "No original prompt provided.")
     stage("video_decode", lambda: visual_scan(paths["video"]))
+    if spec.get("waveform") is True:
+        stage("waveform", lambda: waveform(paths["video"]))
+    else:
+        skip("waveform", "Optional real audio envelope not requested.")
     tracks = []
     for index, path in enumerate(track_paths):
         value = stage(f"imported_track_{index+1}", lambda path=path: _read_json(path))
