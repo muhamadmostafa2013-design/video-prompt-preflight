@@ -43,11 +43,30 @@ const Studio = (() => {
     return cues.map((c,i)=>[i+1,stamp(c.start)+" --> "+stamp(c.end),...c.lines].join("\n")).join("\n\n")+"\n";
   }
   function active(cues,time) { return cues.filter(c=>c.start<=time && time<c.end); }
+  const plain = value => value!==null && typeof value==="object" && !Array.isArray(value);
+  const scalar = value => typeof value==="string" || typeof value==="number";
+  const statuses = new Set(["within_tolerance","drift_candidate","incomplete_acoustic_evidence",
+    "noncontiguous_acoustic_evidence","screen_out_of_range"]);
+  function validTrack(e) {
+    if (!plain(e) || !Array.isArray(e.cue_drift) || e.cue_drift.length>2000 ||
+        !Array.isArray(e.rows) || e.rows.length>2000) return false;
+    const seen=new Set();
+    for(const r of e.cue_drift){
+      if(!plain(r)||!Number.isSafeInteger(r.cue)||r.cue<1||r.cue>2000||
+         seen.has(r.cue)||!statuses.has(r.status))return false;
+      seen.add(r.cue);
+      if(r.acoustic_start_ms!=null&&(!Number.isSafeInteger(r.acoustic_start_ms)||r.acoustic_start_ms<0))return false;
+      if(r.onset_error_ms!=null&&!Number.isSafeInteger(r.onset_error_ms))return false;
+    }
+    return e.rows.every(r=>plain(r)&&seen.has(r.cue)&&typeof r.expected==="string"&&
+      (r.heard_candidate==null||typeof r.heard_candidate==="string")&&typeof r.status==="string"&&
+      (r.start==null||Number.isFinite(r.start))&&(r.end==null||Number.isFinite(r.end)));
+  }
   function tracks(report, videoHash, srtHash) {
-    if (!videoHash || !srtHash || !report || typeof report!=="object") return [];
+    if (!videoHash || !srtHash || !plain(report)) return [];
     const candidates=Array.isArray(report.cue_drift)?[["acoustic-review",report]]:
-      Object.entries(report.stages||{}).filter(([k,v])=>k.startsWith("acoustic_drift_")&&v?.status==="completed").map(([k,v])=>[k,v.evidence]);
-    return candidates.filter(([,e])=>e?.audio_sha256===videoHash&&e.reference_srt_sha256===srtHash&&Array.isArray(e.cue_drift)&&Array.isArray(e.rows))
+      Object.entries(plain(report.stages)?report.stages:{}).filter(([k,v])=>k.startsWith("acoustic_drift_")&&v?.status==="completed").map(([k,v])=>[k,v.evidence]);
+    return candidates.filter(([,e])=>e?.audio_sha256===videoHash&&e.reference_srt_sha256===srtHash&&validTrack(e))
       .map(([key,e])=>({key,e}));
   }
   function visual(report,videoHash) {
@@ -61,18 +80,19 @@ const Studio = (() => {
     const bytes=await globalThis.crypto.subtle.digest("SHA-256",await file.arrayBuffer());
     return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
   }
-  return {parse,serialize,validate,active,tracks,visual,hash,MAX_TEXT,MAX_VIDEO};
+  return {parse,serialize,validate,active,tracks,visual,hash,scalar,MAX_TEXT,MAX_VIDEO};
 })();
 if (typeof module!=="undefined") module.exports=Studio;
 if (typeof document!=="undefined") {
   const $=id=>document.getElementById(id);
   const video=$("video");
   let original=[],draft=[],report=null,videoHash=null,srtHash=null,objectUrl=null,selected=null,available=[],generation=0;
-  let mediaLoaded=false;
+  let mediaLoaded=false, loadedVideo=null, loadedSrt=null;
   const notice=message=>{$("status").textContent=message;};
   const duration=()=>mediaLoaded&&Number.isFinite(video.duration)?Math.floor(video.duration*1000):null;
   function currentTrack(){return available.find(t=>t.key===$("track").value)?.e;}
   function rowFor(index){return currentTrack()?.cue_drift.find(r=>r?.cue===index);}
+  function edited(c){const base=original.find(x=>x.index===c.index);return !!base&&(c.start!==base.start||c.end!==base.end);}
   function seek(ms){if (duration()!==null&&Number.isFinite(ms)&&ms>=0&&ms<=duration()) video.currentTime=ms/1000;}
   function refreshButtons(){
     const c=draft.find(x=>x.index===selected), r=rowFor(selected);
@@ -100,10 +120,10 @@ if (typeof document!=="undefined") {
     $("captionList").replaceChildren();
     for(const c of draft){
       const r=rowFor(c.index);
-      if($("issuesOnly").checked&&r?.status==="within_tolerance")continue;
+      if($("issuesOnly").checked&&r?.status==="within_tolerance"&&!edited(c))continue;
       const b=document.createElement("button");b.className="cue";b.dataset.cue=String(c.index);
       const signed=r&&Number.isFinite(r.onset_error_ms)?(r.onset_error_ms>0?"+":"")+r.onset_error_ms+" ms":"—";
-      b.textContent=c.index+" · "+c.start+"–"+c.end+" ms · "+(r?.status||"unmeasured")+" · "+signed+"\n"+c.lines.join("\n");
+      b.textContent=c.index+" · "+c.start+"–"+c.end+" ms · "+(edited(c)?"EDITED · ":"")+"Original evidence: "+(r?.status||"unmeasured")+" · "+signed+"\n"+c.lines.join("\n");
       b.addEventListener("click",()=>{selected=c.index;seek(c.start);drawSelection();});
       $("captionList").appendChild(b);
     }
@@ -113,7 +133,7 @@ if (typeof document!=="undefined") {
     available=Studio.tracks(report,videoHash,srtHash);
     $("track").replaceChildren();
     const none=document.createElement("option");none.value="";none.textContent="No track selected";$("track").appendChild(none);
-    for(const t of available){const o=document.createElement("option");o.value=t.key;o.textContent=t.key+" · "+(t.e.model||"model not declared");$("track").appendChild(o);}
+    for(const t of available){const o=document.createElement("option");o.value=t.key;o.textContent=t.key+" · "+(Studio.scalar(t.e.model)?String(t.e.model):"model not declared");$("track").appendChild(o);}
     if(available.length)$("track").value=available[0].key;
     $("visual").replaceChildren();
     const evidence=Studio.visual(report,videoHash);
@@ -132,22 +152,37 @@ if (typeof document!=="undefined") {
   }
   async function load(){
     const ticket=++generation;
-    mediaLoaded=false;video.pause();video.removeAttribute("src");video.load();
-    if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
-    original=[];draft=[];report=null;videoHash=null;srtHash=null;selected=null;$("ack").checked=false;bindReport();
-    const vf=$("videoFile").files[0], sf=$("srtFile").files[0], rf=$("reportFile").files[0];
-    notice("Opening local files…");
+    const vf=$("videoFile").files[0]||null, sf=$("srtFile").files[0]||null, rf=$("reportFile").files[0]||null;
+    const sameSources=vf===loadedVideo&&sf===loadedSrt&&(!!objectUrl||original.length>0);
+    $("ack").checked=false;
+    report=null;videoHash=null;srtHash=null;
+    if(!sameSources){
+      mediaLoaded=false;video.pause();video.removeAttribute("src");video.load();
+      if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=null;
+      original=[];draft=[];selected=null;loadedVideo=null;loadedSrt=null;
+    }
+    bindReport();notice("Opening local files…");
     try{
-      if(sf&&sf.size>Studio.MAX_TEXT||rf&&rf.size>Studio.MAX_TEXT)throw Error("SRT/JSON file exceeds 4 MiB.");
-      const captions=sf?Studio.parse(await sf.text()):[];
-      const data=rf?JSON.parse(await rf.text()):null;
-      let vh=null,sh=null,hashWarning="";
-      try{if(vf&&rf)vh=await Studio.hash(vf,Studio.MAX_VIDEO);if(sf&&rf)sh=await Studio.hash(sf,Studio.MAX_TEXT);}
-      catch(err){hashWarning=" "+err.message+" Evidence remains unbound.";}
+      if(sf&&sf.size>Studio.MAX_TEXT)throw Error("SRT file exceeds 4 MiB.");
+      const captions=sameSources?original:(sf?Studio.parse(await sf.text()):[]);
+      let data=null,vh=null,sh=null,warning="";
+      if(rf){
+        try{
+          if(rf.size>Studio.MAX_TEXT)throw Error("JSON report exceeds 4 MiB.");
+          data=JSON.parse(await rf.text());
+          if(!data||typeof data!=="object"||Array.isArray(data))throw Error("Expected a JSON report object.");
+          if(vf)vh=await Studio.hash(vf,Studio.MAX_VIDEO);
+          if(sf)sh=await Studio.hash(sf,Studio.MAX_TEXT);
+        }catch(err){data=null;vh=null;sh=null;warning=" Report ignored: "+err.message;}
+      }
       if(ticket!==generation)return;
-      original=captions;draft=captions.map(c=>({...c,lines:[...c.lines]}));report=data;videoHash=vh;srtHash=sh;
-      if(vf){objectUrl=URL.createObjectURL(vf);video.src=objectUrl;}
-      bindReport();if(hashWarning)notice($("status").textContent+hashWarning);
+      if(!sameSources){
+        original=captions;draft=captions.map(c=>({...c,lines:[...c.lines]}));
+        if(vf){objectUrl=URL.createObjectURL(vf);video.src=objectUrl;}
+        loadedVideo=vf;loadedSrt=sf;
+      }
+      report=data;videoHash=vh;srtHash=sh;bindReport();
+      if(warning)notice($("status").textContent+warning);
     }catch(err){if(ticket===generation)notice("Cannot open files: "+err.message);}
   }
   for(const id of ["videoFile","srtFile","reportFile"])$(id).addEventListener("change",load);
@@ -170,6 +205,6 @@ if (typeof document!=="undefined") {
       notice("Review-only SRT draft exported; not publication approval.");
     }catch(err){notice(err.message);}
   });
-  window.addEventListener("pagehide",()=>{if(objectUrl)URL.revokeObjectURL(objectUrl);});
+  window.addEventListener("pagehide",event=>{if(!event.persisted&&objectUrl)URL.revokeObjectURL(objectUrl);});
   refreshButtons();
 }
