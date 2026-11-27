@@ -42,6 +42,26 @@ const Studio = (() => {
     validate(cues,duration);
     return cues.map((c,i)=>[i+1,stamp(c.start)+" --> "+stamp(c.end),...c.lines].join("\n")).join("\n\n")+"\n";
   }
+  function draftIssues(cues,duration) {
+    const issues=new Map();
+    const flag=(cue,reason)=>{if(!issues.has(cue))issues.set(cue,new Set());issues.get(cue).add(reason);};
+    let furthest=null;
+    for(const c of cues){
+      if(!Number.isSafeInteger(c.start)||!Number.isSafeInteger(c.end)||c.start<0||c.end<=c.start)
+        flag(c.index,"invalid interval");
+      if(Number.isFinite(duration)&&c.end>duration)flag(c.index,"outside video");
+      if(furthest&&c.start<furthest.end){flag(c.index,"overlap or out of order");flag(furthest.index,"overlap or out of order");}
+      if(!furthest||c.end>furthest.end)furthest=c;
+    }
+    return issues;
+  }
+  function candidateDelta(cue,row,duration){
+    if(!cue||!row||!["within_tolerance","drift_candidate"].includes(row.status))return null;
+    const a=row.acoustic_start_ms,b=row.acoustic_end_ms;
+    if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<=a||
+      !Number.isFinite(duration)||b>duration)return null;
+    return {onset:cue.start-a,offset:cue.end-b};
+  }
   function active(cues,time) { return cues.filter(c=>c.start<=time && time<c.end); }
   const plain = value => value!==null && typeof value==="object" && !Array.isArray(value);
   const scalar = value => typeof value==="string" || typeof value==="number";
@@ -80,7 +100,7 @@ const Studio = (() => {
     const bytes=await globalThis.crypto.subtle.digest("SHA-256",await file.arrayBuffer());
     return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,"0")).join("");
   }
-  return {parse,serialize,validate,active,tracks,visual,hash,scalar,MAX_TEXT,MAX_VIDEO};
+  return {parse,serialize,validate,active,tracks,visual,hash,scalar,draftIssues,candidateDelta,MAX_TEXT,MAX_VIDEO};
 })();
 if (typeof module!=="undefined") module.exports=Studio;
 if (typeof document!=="undefined") {
@@ -97,13 +117,22 @@ if (typeof document!=="undefined") {
   function refreshButtons(){
     const c=draft.find(x=>x.index===selected), r=rowFor(selected);
     $("saveTiming").disabled=!c||duration()===null;
+    $("setStart").disabled=!c||duration()===null;
+    $("setEnd").disabled=!c||duration()===null;
+    $("timeline").disabled=duration()===null;
+    $("timeline").max=duration()===null?1:duration();
     $("seekAudio").disabled=!r||!Number.isFinite(r.acoustic_start_ms)||duration()===null||r.acoustic_start_ms<0||r.acoustic_start_ms>duration();
     $("reset").disabled=!draft.length;
     let valid=false;
     try{if(duration()!==null){Studio.validate(draft,duration());valid=true;}}catch{}
     $("export").disabled=!valid||!$("ack").checked;
+    const issues=Studio.draftIssues(draft,duration());
+    $("draftSummary").textContent=draft.length+" cues · "+draft.filter(edited).length+" edited · "+issues.size+" invalid / conflicting. "+(valid?"Timing structurally valid (not acoustic approval).":"Export unavailable until intervals and video are valid.");
   }
   function drawActive(){
+    const now=Math.max(0,Math.round(video.currentTime*1000));
+    $("timeline").value=String(now);
+    $("playbackTime").textContent=now+" ms / "+(duration()===null?"—":duration()+" ms");
     const playing=Studio.active(draft,video.currentTime*1000);
     $("caption").textContent=playing.map(c=>c.lines.join("\n")).join("\n\n");
     for(const el of $("captionList").children) el.setAttribute("aria-current",String(playing.some(c=>String(c.index)===el.dataset.cue)));
@@ -114,16 +143,20 @@ if (typeof document!=="undefined") {
     $("start").value=c?c.start:"";$("end").value=c?c.end:"";
     const words=currentTrack()?.rows.filter(r=>r?.cue===selected)||[];
     $("words").textContent=words.length?words.map(r=>[r.expected,r.heard_candidate||"—",Number.isFinite(r.start)?r.start+"–"+r.end+" s":"no timing",r.status].join(" | ")).join("\n"):"No bound word evidence for this cue.";
+    const delta=Studio.candidateDelta(c,rowFor(selected),duration());
+    const sign=n=>(n>0?"+":"")+n+" ms";
+    $("cueTiming").textContent=delta?"Current draft vs original acoustic candidate: onset "+sign(delta.onset)+" · end "+sign(delta.offset)+" (not revalidated).":"Current draft: no complete in-range acoustic candidate.";
     refreshButtons();
   }
   function drawList(){
     $("captionList").replaceChildren();
+    const issues=Studio.draftIssues(draft,duration());
     for(const c of draft){
       const r=rowFor(c.index);
-      if($("issuesOnly").checked&&r?.status==="within_tolerance"&&!edited(c))continue;
+      if($("issuesOnly").checked&&r?.status==="within_tolerance"&&!edited(c)&&!issues.has(c.index))continue;
       const b=document.createElement("button");b.className="cue";b.dataset.cue=String(c.index);
       const signed=r&&Number.isFinite(r.onset_error_ms)?(r.onset_error_ms>0?"+":"")+r.onset_error_ms+" ms":"—";
-      b.textContent=c.index+" · "+c.start+"–"+c.end+" ms · "+(edited(c)?"EDITED · ":"")+"Original evidence: "+(r?.status||"unmeasured")+" · "+signed+"\n"+c.lines.join("\n");
+      b.textContent=c.index+" · "+c.start+"–"+c.end+" ms · "+(edited(c)?"EDITED · ":"")+"Original evidence: "+(r?.status||"unmeasured")+" · "+signed+(issues.has(c.index)?" · INVALID: "+[...issues.get(c.index)].join(", "):"")+"\n"+c.lines.join("\n");
       b.addEventListener("click",()=>{selected=c.index;seek(c.start);drawSelection();});
       $("captionList").appendChild(b);
     }
@@ -187,10 +220,13 @@ if (typeof document!=="undefined") {
   }
   for(const id of ["videoFile","srtFile","reportFile"])$(id).addEventListener("change",load);
   $("track").addEventListener("change",drawList);$("issuesOnly").addEventListener("change",drawList);
-  video.addEventListener("loadedmetadata",()=>{mediaLoaded=!!objectUrl&&video.currentSrc===objectUrl;refreshButtons();drawActive();});
+  video.addEventListener("loadedmetadata",()=>{mediaLoaded=!!objectUrl&&video.currentSrc===objectUrl;drawList();});
   video.addEventListener("error",()=>{mediaLoaded=false;refreshButtons();notice("Video cannot be played by this browser.");});
   video.addEventListener("timeupdate",drawActive);
   $("ack").addEventListener("change",refreshButtons);
+  $("timeline").addEventListener("input",()=>seek($("timeline").valueAsNumber));
+  $("setStart").addEventListener("click",()=>{$("start").value=String(Math.round(video.currentTime*1000));});
+  $("setEnd").addEventListener("click",()=>{$("end").value=String(Math.round(video.currentTime*1000));});
   $("seekAudio").addEventListener("click",()=>seek(rowFor(selected)?.acoustic_start_ms));
   $("saveTiming").addEventListener("click",()=>{
     const c=draft.find(x=>x.index===selected),start=$("start").valueAsNumber,end=$("end").valueAsNumber;
