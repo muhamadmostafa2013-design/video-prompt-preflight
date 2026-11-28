@@ -446,6 +446,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    # Windows pipes can inherit a legacy code page even on a UTF-8 console.
+    # Keep redirected prompts and JSON lossless, including German and Arabic.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None and not stream.isatty():
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
     parser = build_parser()
     args = parser.parse_args()
     try:

@@ -6,6 +6,10 @@ VPP catches preventable prompt failures *before* you spend a generation credit. 
 
 > VPP reduces preventable failures. It does **not** claim stochastic video generators can be made 100% artifact-free.
 
+The CLI writes redirected output as UTF-8, including German and Arabic text.
+Read captured `--json` output as UTF-8. To avoid shell-specific encoding when
+saving a report on Windows, prefer the command's `--output` option when provided.
+
 ## Why
 
 AI-video prompts often fail for predictable reasons: conflicting durations, crowded short scenes, wrong-language on-screen text, unwanted subtitles, exact-text drift, speaker/language confusion, dense speech, and contradictory audio instructions. Most of these checks do not need another LLM call.
